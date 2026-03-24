@@ -606,19 +606,18 @@ with tab_dash:
 
     if COL_PLACA:
         df_placa_all = (
-       df[df[COL_PLACA].str.strip() != ""]
-       .groupby(COL_PLACA, as_index=False)[VALOR_COL]
-      .agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
-      .rename(columns={VALOR_COL: "Valor", "Qtd": "Qtd"})
-
+            df[df[COL_PLACA].str.strip() != ""]
+            .groupby(COL_PLACA, as_index=False)[VALOR_COL]
+            .agg(Valor=VALOR_COL, Qtd=(VALOR_COL, "count"))
+            .rename(columns={VALOR_COL: "Valor", "Qtd": "Qtd"})
         )
         # Fix: use agg properly
-df_placa_all = (
-    df[df[COL_PLACA].str.strip() != ""]
-    .groupby(COL_PLACA, as_index=False)[VALOR_COL]
-    .agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
-    .rename(columns={VALOR_COL: "Valor", "Qtd": "Qtd"})
-)
+        df_placa_all = (
+            df[df[COL_PLACA].str.strip() != ""]
+            .groupby(COL_PLACA)
+            .agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+            .reset_index()
+            .sort_values("Valor", ascending=True)
         )
 
         if not df_placa_all.empty:
