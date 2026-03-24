@@ -602,15 +602,16 @@ with tab_dash:
     st.markdown("---")
 
     # ── GRÁFICO PRINCIPAL: Devoluções por Placa ────────────────────────────
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Devoluções por Placa — Ranking Geral</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Devoluções por Placa – RANKING GERAL</h3></div>', unsafe_allow_html=True)
 
     if COL_PLACA:
         df_placa_all = (
             df[df[COL_PLACA].str.strip() != ""]
-            .groupby(COL_PLACA, as_index=False)[VALOR_COL]
-            .agg(Valor=VALOR_COL, Qtd=(VALOR_COL, "count"))
-            .rename(columns={VALOR_COL: "Valor", "Qtd": "Qtd"})
-        )
+        .groupby(COL_PLACA)[VALOR_COL]
+        .agg(Valor="sum", Qtd="count")
+        .reset_index()
+        .sort_values("Valor", ascending=True)
+    )
         # Fix: use agg properly
         df_placa_all = (
             df[df[COL_PLACA].str.strip() != ""]
