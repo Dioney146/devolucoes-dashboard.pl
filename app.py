@@ -283,8 +283,7 @@ MIXED_SCALE = ["#1a365d", "#4299e1", "#38a169", "#ecc94b", "#e53e3e"]
 # Publica a planilha em: Arquivo > Compartilhar > Publicar na web > CSV
 # e cole o link abaixo (ou configure a variável de ambiente GSHEETS_URL)
 GSHEETS_DEFAULT = (
-    "https://docs.google.com/spreadsheets/d/1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
-    "/export?format=csv&gid=0"
+    "https://docs.google.com/spreadsheets/d/1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI/edit?usp=sharing"
 )
 GSHEETS_URL = os.getenv("GSHEETS_URL", GSHEETS_DEFAULT)
 
