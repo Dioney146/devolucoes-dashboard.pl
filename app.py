@@ -731,10 +731,77 @@ with tab_dash:
     st.markdown("---")
 
     # ── 3 GRÁFICOS NARRATIVOS ────────────────────────────────────────────────
-    c1, c2, c3 = st.columns(3, gap="large")
+    # Cards container para separar visualmente
+    st.markdown("""
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:8px;">
+      <div style="background:linear-gradient(135deg,rgba(10,20,46,0.85),rgba(12,24,54,0.85));
+        border:1px solid rgba(56,189,248,0.13);border-radius:18px;padding:22px 20px 8px;
+        backdrop-filter:blur(10px);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+          <div style="width:3px;height:22px;background:linear-gradient(180deg,#ef4444,#991b1b);border-radius:2px;box-shadow:0 0 8px rgba(239,68,68,0.5);"></div>
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#e2e8f0;letter-spacing:0.1em;">❗ PRINCIPAIS MOTIVOS</span>
+        </div>
+        <div id="chart-motivos"></div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(10,20,46,0.85),rgba(12,24,54,0.85));
+        border:1px solid rgba(56,189,248,0.13);border-radius:18px;padding:22px 20px 8px;
+        backdrop-filter:blur(10px);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+          <div style="width:3px;height:22px;background:linear-gradient(180deg,#38bdf8,#2563eb);border-radius:2px;box-shadow:0 0 8px rgba(56,189,248,0.5);"></div>
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#e2e8f0;letter-spacing:0.1em;">👤 TOP 10 CLIENTES</span>
+        </div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(10,20,46,0.85),rgba(12,24,54,0.85));
+        border:1px solid rgba(56,189,248,0.13);border-radius:18px;padding:22px 20px 8px;
+        backdrop-filter:blur(10px);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+          <div style="width:3px;height:22px;background:linear-gradient(180deg,#0ea5e9,#0369a1);border-radius:2px;box-shadow:0 0 8px rgba(14,165,233,0.5);"></div>
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#e2e8f0;letter-spacing:0.1em;">🧑‍💼 TOP 10 VENDEDORES</span>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3, gap="medium")
+
+    def make_hbar(df_data, x_col, y_col, color_scale, height=420):
+        """Gráfico de barras horizontal com tema escuro, fonte grande e respiro."""
+        fig = px.bar(
+            df_data, x=x_col, y=y_col, orientation="h",
+            color=x_col, color_continuous_scale=color_scale,
+            text=[fmt_brl(v) for v in df_data[x_col]],
+            labels={y_col: "", x_col: "R$"},
+        )
+        fig.update_traces(
+            textposition="outside",
+            textfont=dict(size=11, color="#e2e8f0", family="DM Mono"),
+            cliponaxis=False,
+            marker_line_width=0,
+        )
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#94a3b8", family="Space Grotesk"),
+            coloraxis_showscale=False,
+            height=height,
+            margin=dict(t=10, b=30, l=6, r=110),
+            xaxis=dict(
+                tickfont=dict(color="#475569", size=10),
+                gridcolor="rgba(255,255,255,0.04)",
+                linecolor="rgba(255,255,255,0.05)",
+                tickformat=",.0f",
+                zeroline=False,
+            ),
+            yaxis=dict(
+                tickfont=dict(color="#cbd5e1", size=11, family="Space Grotesk"),
+                gridcolor="rgba(0,0,0,0)",
+                linecolor="rgba(0,0,0,0)",
+                automargin=True,
+            ),
+        )
+        return fig
 
     with c1:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Top Motivos</h3></div>', unsafe_allow_html=True)
         if COL_MOTIVO:
             df_m = (
                 df[df[COL_MOTIVO].str.strip()!=""]
@@ -743,18 +810,13 @@ with tab_dash:
                 .reset_index().sort_values("Valor",ascending=True).tail(8)
             )
             if not df_m.empty:
-                fig_m = px.bar(df_m, x="Valor", y=COL_MOTIVO, orientation="h",
-                               color="Valor", color_continuous_scale=RED,
-                               text=[fmt_brl(v) for v in df_m["Valor"]],
-                               labels={COL_MOTIVO:"","Valor":"R$"})
-                fig_m.update_traces(textposition="outside",textfont_size=8,cliponaxis=False)
-                st.plotly_chart(plotly_dark(fig_m,height=360), use_container_width=True)
+                fig_m = make_hbar(df_m, "Valor", COL_MOTIVO, RED, height=420)
+                st.plotly_chart(fig_m, use_container_width=True)
                 top = df_m.iloc[-1]
                 pct = top["Valor"]/total_val*100 if total_val>0 else 0
-                st.caption(f"📌 **{top[COL_MOTIVO]}** representa {pct:.1f}% ({fmt_brl(top['Valor'])})")
+                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{top[COL_MOTIVO]}</b> representa {pct:.1f}% ({fmt_brl(top["Valor"])})</p>', unsafe_allow_html=True)
 
     with c2:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>👤 Top 10 Clientes</h3></div>', unsafe_allow_html=True)
         if COL_CLIENTE:
             df_cli = (
                 df[df[COL_CLIENTE].str.strip()!=""]
@@ -763,17 +825,12 @@ with tab_dash:
                 .reset_index().sort_values("Valor",ascending=True).tail(10)
             )
             if not df_cli.empty:
-                fig_c = px.bar(df_cli, x="Valor", y=COL_CLIENTE, orientation="h",
-                               color="Valor", color_continuous_scale=MIXED,
-                               text=[fmt_brl(v) for v in df_cli["Valor"]],
-                               labels={COL_CLIENTE:"","Valor":"R$"})
-                fig_c.update_traces(textposition="outside",textfont_size=8,cliponaxis=False)
-                st.plotly_chart(plotly_dark(fig_c,height=360), use_container_width=True)
+                fig_c = make_hbar(df_cli, "Valor", COL_CLIENTE, MIXED, height=420)
+                st.plotly_chart(fig_c, use_container_width=True)
                 top_c = df_cli.iloc[-1]
-                st.caption(f"📌 **{str(top_c[COL_CLIENTE])[:28]}** — {fmt_brl(top_c['Valor'])}")
+                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{str(top_c[COL_CLIENTE])[:32]}</b> — {fmt_brl(top_c["Valor"])}</p>', unsafe_allow_html=True)
 
     with c3:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>🧑‍💼 Top 10 Vendedores</h3></div>', unsafe_allow_html=True)
         if COL_VENDEDOR:
             df_v = (
                 df[df[COL_VENDEDOR].str.strip()!=""]
@@ -782,16 +839,14 @@ with tab_dash:
                 .reset_index().sort_values("Valor",ascending=True).tail(10)
             )
             if not df_v.empty:
-                fig_v = px.bar(df_v, x="Valor", y=COL_VENDEDOR, orientation="h",
-                               color="Valor", color_continuous_scale=BLUE,
-                               text=[fmt_brl(v) for v in df_v["Valor"]],
-                               labels={COL_VENDEDOR:"","Valor":"R$"})
-                fig_v.update_traces(textposition="outside",textfont_size=8,cliponaxis=False)
-                st.plotly_chart(plotly_dark(fig_v,height=360), use_container_width=True)
+                fig_v = make_hbar(df_v, "Valor", COL_VENDEDOR, BLUE, height=420)
+                st.plotly_chart(fig_v, use_container_width=True)
                 top_v = df_v.iloc[-1]
-                st.caption(f"📌 **{str(top_v[COL_VENDEDOR])[:28]}** — {int(top_v['Qtd'])} devoluções")
+                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{str(top_v[COL_VENDEDOR])[:32]}</b> — {int(top_v["Qtd"])} devoluções</p>', unsafe_allow_html=True)
 
+    st.markdown("<div style='margin-top:32px;'></div>", unsafe_allow_html=True)
     st.markdown("---")
+
     c4, c5 = st.columns([1,2], gap="large")
 
     with c4:
@@ -806,10 +861,12 @@ with tab_dash:
             if not df_d.empty:
                 fig_d = px.pie(df_d, names=COL_DESTINO, values="Valor",
                                color_discrete_sequence=MIXED, hole=0.52)
-                fig_d.update_traces(textfont_size=10,
+                fig_d.update_traces(
+                    textfont=dict(size=12, color="#e2e8f0"),
                     marker=dict(line=dict(color="rgba(4,9,20,0.8)",width=2)),
-                    pull=[0.05]+[0]*(len(df_d)-1))
-                st.plotly_chart(plotly_dark(fig_d,height=320), use_container_width=True)
+                    pull=[0.05]+[0]*(len(df_d)-1)
+                )
+                st.plotly_chart(plotly_dark(fig_d,height=360), use_container_width=True)
 
     with c5:
         st.markdown('<div class="sec-header"><div class="bar"></div><h3>📊 Ranking de Motivos</h3></div>', unsafe_allow_html=True)
@@ -822,8 +879,40 @@ with tab_dash:
             df_rk["Valor Total"] = df_rk["Total"].apply(fmt_brl)
             df_rk["% Total"] = (df_rk["Total"]/total_val*100).round(1).astype(str)+"%" if total_val>0 else "0%"
             df_rk = df_rk.rename(columns={COL_MOTIVO:"Motivo"})
-            st.dataframe(df_rk[["Motivo","Qtd","Valor Total","% Total"]],
-                         use_container_width=True, hide_index=True, height=320)
+            # Renderiza como HTML para garantir tema escuro em qualquer navegador
+            rows_html = ""
+            for i, row in df_rk[["Motivo","Qtd","Valor Total","% Total"]].iterrows():
+                bg = "rgba(14,165,233,0.06)" if i % 2 == 0 else "rgba(0,0,0,0)"
+                rows_html += f"""<tr style="background:{bg};">
+                  <td style="padding:10px 14px;color:#cbd5e1;font-size:0.84rem;border-bottom:1px solid rgba(56,189,248,0.07);">{row['Motivo']}</td>
+                  <td style="padding:10px 14px;color:#7dd3fc;font-size:0.84rem;text-align:center;border-bottom:1px solid rgba(56,189,248,0.07);">{row['Qtd']}</td>
+                  <td style="padding:10px 14px;color:#4ade80;font-size:0.84rem;font-family:'DM Mono',monospace;border-bottom:1px solid rgba(56,189,248,0.07);">{row['Valor Total']}</td>
+                  <td style="padding:10px 14px;color:#f59e0b;font-size:0.84rem;text-align:center;border-bottom:1px solid rgba(56,189,248,0.07);">{row['% Total']}</td>
+                </tr>"""
+            st.markdown(f"""
+            <div style="background:rgba(6,13,31,0.92);border:1px solid rgba(56,189,248,0.15);
+              border-radius:14px;overflow:hidden;max-height:360px;overflow-y:auto;">
+              <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                  <tr style="background:rgba(12,26,58,0.98);position:sticky;top:0;">
+                    <th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;
+                      letter-spacing:0.08em;text-align:left;text-transform:uppercase;
+                      border-bottom:1px solid rgba(56,189,248,0.2);">Motivo</th>
+                    <th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;
+                      letter-spacing:0.08em;text-align:center;
+                      border-bottom:1px solid rgba(56,189,248,0.2);">Qtd</th>
+                    <th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;
+                      letter-spacing:0.08em;
+                      border-bottom:1px solid rgba(56,189,248,0.2);">Valor Total</th>
+                    <th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;
+                      letter-spacing:0.08em;text-align:center;
+                      border-bottom:1px solid rgba(56,189,248,0.2);">% Total</th>
+                  </tr>
+                </thead>
+                <tbody>{rows_html}</tbody>
+              </table>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
 # ABA 2 — CAMPOS
@@ -879,8 +968,37 @@ with tab_campos:
     if len(df_campos) == 0:
         st.warning("⚠️ Nenhum registro encontrado.")
     else:
-        st.dataframe(df_campos, use_container_width=True, height=560, hide_index=True)
+        # Tabela HTML com tema escuro garantido em qualquer navegador
+        col_headers = list(df_campos.columns)
+        thead_cols = "".join([
+            f'<th style="padding:11px 13px;color:#38bdf8;font-size:0.74rem;font-weight:700;'
+            f'letter-spacing:0.07em;text-align:left;text-transform:uppercase;white-space:nowrap;'
+            f'border-bottom:1px solid rgba(56,189,248,0.22);background:rgba(12,26,58,0.99);">{c}</th>'
+            for c in col_headers
+        ])
+        rows_html = ""
+        for idx, (_, row) in enumerate(df_campos.head(500).iterrows()):
+            bg = "rgba(14,165,233,0.05)" if idx % 2 == 0 else "rgba(0,0,0,0)"
+            cells = "".join([
+                f'<td style="padding:9px 13px;color:#cbd5e1;font-size:0.83rem;'
+                f'border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>'
+                for val in row.values
+            ])
+            rows_html += f'<tr style="background:{bg};">{cells}</tr>'
+        st.markdown(f"""
+        <div style="background:rgba(5,11,28,0.94);border:1px solid rgba(56,189,248,0.16);
+          border-radius:14px;overflow:hidden;max-height:560px;overflow-y:auto;overflow-x:auto;
+          box-shadow:0 4px 24px rgba(0,0,0,0.4);">
+          <table style="width:100%;border-collapse:collapse;min-width:900px;">
+            <thead><tr>{thead_cols}</tr></thead>
+            <tbody>{rows_html}</tbody>
+          </table>
+        </div>
+        """, unsafe_allow_html=True)
+        if len(df_campos) > 500:
+            st.caption(f"⚠️ Exibindo primeiros 500 de {len(df_campos)} registros. Use exportação para ver todos.")
         csv_c = df_campos.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
+        st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
         st.download_button("⬇️ Exportar (.csv)", data=csv_c,
             file_name=f"campos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
 
@@ -905,8 +1023,34 @@ with tab_dados:
     if n_rows != "Todos":
         df_sorted = df_sorted.head(int(n_rows))
 
-    st.dataframe(df_sorted[display_cols], use_container_width=True, height=520, hide_index=True)
-    st.caption(f"Exibindo {len(df_sorted):,} de {len(df):,} registros".replace(",","."))
+    # Tabela HTML escura padronizada
+    disp = df_sorted[display_cols]
+    thead_cols2 = "".join([
+        f'<th style="padding:11px 13px;color:#38bdf8;font-size:0.74rem;font-weight:700;'
+        f'letter-spacing:0.07em;text-align:left;text-transform:uppercase;white-space:nowrap;'
+        f'border-bottom:1px solid rgba(56,189,248,0.22);background:rgba(12,26,58,0.99);">{c}</th>'
+        for c in disp.columns
+    ])
+    rows_html2 = ""
+    for idx, (_, row) in enumerate(disp.head(500).iterrows()):
+        bg = "rgba(14,165,233,0.05)" if idx % 2 == 0 else "rgba(0,0,0,0)"
+        cells = "".join([
+            f'<td style="padding:9px 13px;color:#cbd5e1;font-size:0.83rem;'
+            f'border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>'
+            for val in row.values
+        ])
+        rows_html2 += f'<tr style="background:{bg};">{cells}</tr>'
+    st.markdown(f"""
+    <div style="background:rgba(5,11,28,0.94);border:1px solid rgba(56,189,248,0.16);
+      border-radius:14px;overflow:hidden;max-height:520px;overflow-y:auto;overflow-x:auto;
+      box-shadow:0 4px 24px rgba(0,0,0,0.4);">
+      <table style="width:100%;border-collapse:collapse;min-width:900px;">
+        <thead><tr>{thead_cols2}</tr></thead>
+        <tbody>{rows_html2}</tbody>
+      </table>
+    </div>
+    """, unsafe_allow_html=True)
+    st.caption(f"Exibindo {len(disp.head(500)):,} de {len(df):,} registros".replace(",","."))
 
     st.markdown("---")
     e1, e2 = st.columns(2)
@@ -926,4 +1070,7 @@ with tab_dados:
         st.write(f"Cliente=`{COL_CLIENTE}` | Devolucionista=`{COL_DEVOLUCION}`")
         st.write(f"DataSaída=`{COL_DTSAIDA}` | DataEntrega(DTENT)=`{COL_DTENTREGA}`")
         st.write(f"Registros com valor > 0: {(df_raw[VALOR_COL]>0).sum()}")
-        st.dataframe(df_raw[display_cols].head(5), use_container_width=True)
+        diag = df_raw[display_cols].head(5)
+        th = "".join([f'<th style="padding:8px 12px;color:#38bdf8;font-size:0.72rem;background:rgba(12,26,58,0.99);border-bottom:1px solid rgba(56,189,248,0.2);">{c}</th>' for c in diag.columns])
+        tr = "".join([f'<tr>{"".join([f"<td style=padding:8px_12px;color:#cbd5e1;font-size:0.8rem;border-bottom:1px_solid_rgba(56,189,248,0.06);>{v}</td>" for v in r.values])}</tr>' for _,r in diag.iterrows()])
+        st.markdown(f'<div style="background:rgba(5,11,28,0.94);border:1px solid rgba(56,189,248,0.15);border-radius:10px;overflow:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr>{th}</tr></thead><tbody>{tr}</tbody></table></div>', unsafe_allow_html=True)
