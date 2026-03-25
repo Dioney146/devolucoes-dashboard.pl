@@ -7,7 +7,7 @@ import io
 from datetime import datetime, date
 
 st.set_page_config(
-    page_title="Gestão de Devoluções PCE",
+    page_title="Gestão de Devoluções Delly's",
     page_icon="📦",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -22,15 +22,15 @@ html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;background
 .bg-img{position:absolute;inset:0;width:100%;height:100%;
   background-image:url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1920&q=80');
   background-size:cover;background-position:center center;
-  filter:blur(4px) brightness(0.28) saturate(0.5);transform:scale(1.06);}
+  filter:blur(3px) brightness(0.38) saturate(0.6);transform:scale(1.06);}
 .bg-tint{position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(4,9,20,0.82) 0%,rgba(6,14,35,0.76) 50%,rgba(4,12,28,0.84) 100%);}
+  background:linear-gradient(135deg,rgba(4,9,20,0.70) 0%,rgba(6,14,35,0.62) 50%,rgba(4,12,28,0.72) 100%);}
 .stApp,[data-testid="stAppViewContainer"],[data-testid="stHeader"],[data-testid="stToolbar"]{background:transparent!important;}
 [data-testid="stAppViewContainer"]>section{background:transparent!important;}
 .main .block-container{position:relative;z-index:1;}
 #MainMenu,footer,header{visibility:hidden;}
 .stDeployButton{display:none;}
-/* Oculta rodapé "Hospedado com Streamlit" e avatar do criador */
+/* Oculta rodapé "Hospedado com Streamlit" e avatar/nome do criador */
 [data-testid="stStatusWidget"]{display:none!important;}
 [data-testid="stToolbar"]{display:none!important;}
 iframe[title="streamlit_cloud_info"]{display:none!important;}
@@ -39,28 +39,35 @@ div[class*="viewerBadge"]{display:none!important;}
 .viewerBadge_container__1QSob{display:none!important;}
 .styles_viewerBadge__1yB5_{display:none!important;}
 #stDecoration{display:none!important;}
+/* Oculta menu de 3 pontos, header nativo e ícone do usuário no topo */
+[data-testid="stHeader"]{display:none!important;visibility:hidden!important;}
+[data-testid="stDecoration"]{display:none!important;}
+button[kind="header"]{display:none!important;}
+[data-testid="collapsedControl"]{display:none!important;}
+/* Oculta nome/avatar que aparece no canto superior direito */
+.stApp > header{display:none!important;}
+section[data-testid="stSidebar"] ~ div > div:first-child > div:first-child{display:none!important;}
+[data-baseweb="avatar"]{display:none!important;}
+[aria-label*="user"],[aria-label*="profile"],[aria-label*="account"]{display:none!important;}
 
-.topbar{background:linear-gradient(90deg,rgba(8,15,35,0.98),rgba(10,20,45,0.98));
-  border-bottom:1px solid rgba(56,189,248,0.22);padding:16px 36px;
-  display:flex;align-items:center;justify-content:space-between;
+.topbar{background:linear-gradient(90deg,rgba(6,11,28,0.97),rgba(8,16,38,0.97));
+  border-bottom:2px solid rgba(56,189,248,0.28);padding:22px 44px;
+  display:flex;align-items:center;justify-content:flex-start;gap:22px;
   margin:-6rem -1rem 0;position:sticky;top:0;z-index:999;
-  backdrop-filter:blur(20px);box-shadow:0 4px 40px rgba(0,0,0,0.6);}
-.topbar-brand{display:flex;align-items:center;gap:14px;}
-.topbar-brand .icon{width:42px;height:42px;background:linear-gradient(135deg,#0ea5e9,#2563eb);
-  border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;
-  box-shadow:0 0 20px rgba(14,165,233,0.4);}
-.topbar-brand h1{font-family:'Bebas Neue',sans-serif!important;font-size:1.65rem!important;
-  font-weight:400!important;color:#f0f9ff!important;letter-spacing:0.12em;margin:0!important;}
-.topbar-brand span{font-size:0.68rem;color:#475569;display:block;font-weight:400;
-  letter-spacing:0.1em;text-transform:uppercase;}
+  backdrop-filter:blur(24px);box-shadow:0 4px 50px rgba(0,0,0,0.7);}
+.topbar-brand{display:flex;align-items:center;gap:20px;flex:1;}
+.topbar-brand .icon{width:54px;height:54px;background:linear-gradient(135deg,#0ea5e9,#2563eb);
+  border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 0 28px rgba(14,165,233,0.5);flex-shrink:0;}
+.topbar-brand h1{font-family:'Bebas Neue',sans-serif!important;font-size:2.6rem!important;
+  font-weight:400!important;color:#f0f9ff!important;letter-spacing:0.14em;margin:0!important;
+  text-shadow:0 0 40px rgba(56,189,248,0.35);line-height:1;}
+.topbar-brand span{font-size:0.72rem;color:#4a6080;display:block;font-weight:500;
+  letter-spacing:0.14em;text-transform:uppercase;margin-top:3px;}
 .topbar-right{display:flex;align-items:center;gap:18px;}
-.live-badge{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.35);
-  border-radius:50px;padding:6px 16px;font-size:0.72rem;color:#4ade80;font-weight:600;
-  letter-spacing:0.06em;text-transform:uppercase;}
-.live-dot{display:inline-block;width:7px;height:7px;background:#4ade80;border-radius:50%;
-  margin-right:6px;animation:pulse 2s infinite;box-shadow:0 0 8px #4ade80;}
-@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px #4ade80;}50%{opacity:0.4;box-shadow:0 0 3px #4ade80;}}
-.topbar-time{font-family:'DM Mono',monospace;font-size:0.72rem;color:#475569;letter-spacing:0.06em;}
+.live-badge{display:none;}
+.live-dot{display:none;}
+.topbar-time{display:none;}
 
 .filter-bar{background:linear-gradient(135deg,rgba(10,18,42,0.93),rgba(12,22,50,0.93));
   border:1px solid rgba(56,189,248,0.2);border-radius:18px;padding:20px 28px 16px;
@@ -291,13 +298,9 @@ st.markdown(f"""
   <div class="topbar-brand">
     <div class="icon">📦</div>
     <div>
-      <h1>GESTÃO DE DEVOLUÇÕES PCE</h1>
+      <h1>GESTÃO DE DEVOLUÇÕES DELLY'S</h1>
       <span>Módulo de Análise e Controle Operacional</span>
     </div>
-  </div>
-  <div class="topbar-right">
-    <div class="live-badge"><span class="live-dot"></span>Ao Vivo</div>
-    <div class="topbar-time">🕐 {now_str}</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -507,7 +510,7 @@ with tab_dash:
                 legend=dict(bgcolor="rgba(8,15,35,0.92)",
                             bordercolor="rgba(56,189,248,0.2)", borderwidth=1,
                             font=dict(color="#94a3b8", size=11),
-                            orientation="h", x=0.5, xanchor="center", y=1.06),
+                            orientation="h", x=1.0, xanchor="right", y=-0.22),
             )
 
             st.plotly_chart(fig_placa, use_container_width=True)
@@ -569,6 +572,23 @@ with tab_dash:
                     "Valor: <b>%{text}</b><br>"
                     "<extra></extra>"
                 ),
+                yaxis="y1",
+            ))
+
+            # Linha amarela de quantidade
+            fig_mot.add_trace(go.Scatter(
+                x=df_motivo_val[COL_MOTIVO],
+                y=df_motivo_val["Qtd"],
+                name="Qtd. Devoluções",
+                mode="lines+markers+text",
+                line=dict(color="#f59e0b", width=2.5),
+                marker=dict(color="#fde68a", size=10,
+                            line=dict(color="#f59e0b", width=2)),
+                text=df_motivo_val["Qtd"].astype(str),
+                textposition="top center",
+                textfont=dict(size=13, color="#ffffff", family="DM Mono", weight="bold"),
+                hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>",
+                yaxis="y2",
             ))
 
             h_mot = max(440, min(n_mot * 60, 680))
@@ -577,7 +597,7 @@ with tab_dash:
                 plot_bgcolor="rgba(255,255,255,0.015)",
                 font=dict(color="#94a3b8", family="Space Grotesk"),
                 height=h_mot,
-                margin=dict(t=40, b=110, l=12, r=30),
+                margin=dict(t=40, b=110, l=12, r=70),
                 bargap=0.32,
                 xaxis=dict(
                     tickfont=dict(color="#b0bec5", size=11, family="Space Grotesk"),
@@ -592,14 +612,20 @@ with tab_dash:
                     gridcolor="rgba(255,255,255,0.05)",
                     linecolor="rgba(255,255,255,0.06)",
                     tickformat=",.0f",
+                    side="left",
+                ),
+                yaxis2=dict(
+                    title=dict(text="Qtd. Devoluções", font=dict(color="#f59e0b", size=11)),
+                    tickfont=dict(color="#f59e0b", size=10),
+                    overlaying="y", side="right", showgrid=False,
                 ),
                 legend=dict(
                     bgcolor="rgba(8,15,35,0.92)",
                     bordercolor="rgba(56,189,248,0.2)", borderwidth=1,
                     font=dict(color="#94a3b8", size=11),
-                    orientation="h", x=0.5, xanchor="center", y=1.06,
+                    orientation="h", x=1.0, xanchor="right", y=-0.22,
                 ),
-                showlegend=False,
+                showlegend=True,
             )
 
             st.plotly_chart(fig_mot, use_container_width=True)
