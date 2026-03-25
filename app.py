@@ -7,7 +7,7 @@ import io
 from datetime import datetime, date
 
 st.set_page_config(
-    page_title="Devoluções Dashboard",
+    page_title="Gestão de Devoluções PCE",
     page_icon="📦",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -22,14 +22,23 @@ html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;background
 .bg-img{position:absolute;inset:0;width:100%;height:100%;
   background-image:url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1920&q=80');
   background-size:cover;background-position:center center;
-  filter:blur(5px) brightness(0.12) saturate(0.35);transform:scale(1.06);}
+  filter:blur(4px) brightness(0.28) saturate(0.5);transform:scale(1.06);}
 .bg-tint{position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(4,9,20,0.94) 0%,rgba(6,14,35,0.89) 50%,rgba(4,12,28,0.96) 100%);}
+  background:linear-gradient(135deg,rgba(4,9,20,0.82) 0%,rgba(6,14,35,0.76) 50%,rgba(4,12,28,0.84) 100%);}
 .stApp,[data-testid="stAppViewContainer"],[data-testid="stHeader"],[data-testid="stToolbar"]{background:transparent!important;}
 [data-testid="stAppViewContainer"]>section{background:transparent!important;}
 .main .block-container{position:relative;z-index:1;}
 #MainMenu,footer,header{visibility:hidden;}
 .stDeployButton{display:none;}
+/* Oculta rodapé "Hospedado com Streamlit" e avatar do criador */
+[data-testid="stStatusWidget"]{display:none!important;}
+[data-testid="stToolbar"]{display:none!important;}
+iframe[title="streamlit_cloud_info"]{display:none!important;}
+div[class*="StatusWidget"]{display:none!important;}
+div[class*="viewerBadge"]{display:none!important;}
+.viewerBadge_container__1QSob{display:none!important;}
+.styles_viewerBadge__1yB5_{display:none!important;}
+#stDecoration{display:none!important;}
 
 .topbar{background:linear-gradient(90deg,rgba(8,15,35,0.98),rgba(10,20,45,0.98));
   border-bottom:1px solid rgba(56,189,248,0.22);padding:16px 36px;
@@ -120,11 +129,45 @@ label,.stSelectbox label,.stMultiSelect label,.stTextInput label,.stDateInput la
 
 .stDataFrame{border-radius:14px!important;overflow:hidden!important;
   border:1px solid rgba(56,189,248,0.13)!important;}
+/* Tema escuro nas tabelas */
+[data-testid="stDataFrame"] iframe{background:#060d1f!important;}
+.stDataFrame [data-testid="stDataFrameGlideDataEditor"]{background:#07111f!important;}
+div[data-testid="stDataFrame"]>div{background:rgba(7,17,40,0.97)!important;
+  border:1px solid rgba(56,189,248,0.15)!important;border-radius:14px!important;}
+/* Forçar fundo escuro em toda a área da tabela */
+.stDataFrame canvas{background:#07111f!important;}
+.glide-data-grid-container{background:#07111f!important;}
 .stRadio label{color:#94a3b8!important;font-size:0.85rem!important;}
 hr{border-color:rgba(56,189,248,0.08)!important;margin:22px 0!important;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:rgba(6,13,31,0.5);}
 ::-webkit-scrollbar-thumb{background:#1e3a8a;border-radius:3px;}
+/* Tema escuro completo para tabelas Streamlit */
+[data-testid="stDataFrame"]{
+  background:rgba(6,13,31,0.96)!important;
+  border:1px solid rgba(56,189,248,0.18)!important;
+  border-radius:14px!important;
+  overflow:hidden!important;}
+[data-testid="stDataFrame"] > div {
+  background:rgba(6,13,31,0.96)!important;
+  border-radius:14px!important;}
+[data-testid="stDataFrame"] div[role="grid"]{
+  background:rgba(6,13,31,0.96)!important;}
+/* Cabeçalho da tabela */
+[data-testid="stDataFrame"] th,
+[data-testid="stDataFrame"] [role="columnheader"]{
+  background:rgba(12,26,58,0.98)!important;
+  color:#38bdf8!important;
+  font-weight:700!important;
+  border-bottom:1px solid rgba(56,189,248,0.22)!important;}
+/* Linhas da tabela */
+[data-testid="stDataFrame"] td,
+[data-testid="stDataFrame"] [role="gridcell"]{
+  background:rgba(6,13,31,0.96)!important;
+  color:#cbd5e1!important;
+  border-bottom:1px solid rgba(56,189,248,0.06)!important;}
+[data-testid="stDataFrame"] tr:hover td{
+  background:rgba(14,165,233,0.08)!important;}
 [data-testid="stMetric"]{background:rgba(13,31,60,0.72)!important;
   border:1px solid rgba(56,189,248,0.13)!important;border-radius:14px!important;
   padding:14px!important;backdrop-filter:blur(8px);}
@@ -247,7 +290,10 @@ st.markdown(f"""
 <div class="topbar">
   <div class="topbar-brand">
     <div class="icon">📦</div>
-    <div><h1>DEVOLUÇÕES</h1><span>Sistema de Análise e Controle</span></div>
+    <div>
+      <h1>GESTÃO DE DEVOLUÇÕES PCE</h1>
+      <span>Módulo de Análise e Controle Operacional</span>
+    </div>
   </div>
   <div class="topbar-right">
     <div class="live-badge"><span class="live-dot"></span>Ao Vivo</div>
@@ -409,7 +455,7 @@ with tab_dash:
                             line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
                 text=[fmt_brl(v) for v in df_placa["Valor"]],
                 textposition="outside",
-                textfont=dict(size=9, color="#94a3b8", family="DM Mono"),
+                textfont=dict(size=13, color="#ffffff", family="DM Mono", weight="bold"),
                 hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>",
                 yaxis="y1",
             ))
@@ -424,7 +470,7 @@ with tab_dash:
                             line=dict(color="#f59e0b", width=2)),
                 text=df_placa["Qtd"].astype(str),
                 textposition="top center",
-                textfont=dict(size=10, color="#fde68a", family="DM Mono"),
+                textfont=dict(size=13, color="#ffffff", family="DM Mono", weight="bold"),
                 hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>",
                 yaxis="y2",
             ))
@@ -435,9 +481,12 @@ with tab_dash:
                 plot_bgcolor="rgba(255,255,255,0.015)",
                 font=dict(color="#94a3b8", family="Space Grotesk"),
                 height=h,
-                margin=dict(t=50, b=90, l=12, r=70),
-                title=dict(text=f"<b>{periodo}</b>",
-                           font=dict(size=13, color="#64748b"), x=0.5, xanchor="center"),
+                margin=dict(t=60, b=90, l=12, r=70),
+                title=dict(
+                    text=f"<b>{periodo}</b>",
+                    font=dict(size=17, color="#ffffff", family="Space Grotesk"),
+                    x=0.5, xanchor="center"
+                ),
                 bargap=0.28,
                 xaxis=dict(tickfont=dict(color="#b0bec5", size=11, family="DM Mono"),
                            gridcolor="rgba(255,255,255,0.04)",
@@ -514,7 +563,7 @@ with tab_dash:
                 ),
                 text=[fmt_brl(v) for v in df_motivo_val["Valor"]],
                 textposition="outside",
-                textfont=dict(size=9, color="#94a3b8", family="DM Mono"),
+                textfont=dict(size=13, color="#ffffff", family="DM Mono", weight="bold"),
                 hovertemplate=(
                     "<b>%{x}</b><br>"
                     "Valor: <b>%{text}</b><br>"
