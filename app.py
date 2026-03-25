@@ -19,7 +19,7 @@ st.markdown("""
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;}
 .stApp::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;
-  background-image:url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1920&q=80');
+  background-image:url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1920&q=80');
   background-size:cover;background-position:center;
   filter:blur(8px) brightness(0.14) saturate(0.5);z-index:-2;transform:scale(1.05);}
 .stApp::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;
@@ -242,23 +242,19 @@ st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙️ FILTRO
 fc1, fc2, fc3, fc4 = st.columns([3, 2, 2, 1], gap="medium")
 
 usar_data = False
-dt_ini = dt_fim = None
+dt_sel = None
 
 with fc1:
     datas_ok = df_raw["_DTENTREGA_DT"].dropna()
     if len(datas_ok) > 0:
-        dt_min_val = datas_ok.min().date()
-        dt_max_val = datas_ok.max().date()
-        cd1, cd2 = st.columns(2)
-        with cd1:
-            dt_ini = st.date_input("📅 Entrega — De", value=dt_min_val,
-                                   min_value=dt_min_val, max_value=dt_max_val, key="g_dtini")
-        with cd2:
-            dt_fim = st.date_input("📅 Entrega — Até", value=dt_max_val,
-                                   min_value=dt_min_val, max_value=dt_max_val, key="g_dtfim")
-        usar_data = True
+        datas_unicas = sorted(datas_ok.dt.date.unique())
+        opcoes_data = ["— Todas as datas —"] + [d.strftime("%d/%m/%Y") for d in datas_unicas]
+        sel_data_str = st.selectbox("📅 Data de Entrega (DTENT)", opcoes_data, key="g_dtsel")
+        if sel_data_str != "— Todas as datas —":
+            dt_sel = datetime.strptime(sel_data_str, "%d/%m/%Y").date()
+            usar_data = True
     else:
-        st.caption("⚠️ Sem datas de entrega válidas na planilha")
+        st.caption("⚠️ Sem datas DTENT válidas na planilha")
 
 with fc2:
     if COL_DEVOLUCION:
@@ -288,9 +284,9 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ── Aplica filtros ─────────────────────────────────────────────────────────────
 df = df_raw.copy()
 
-if usar_data and dt_ini and dt_fim:
-    mask = df["_DTENTREGA_DT"].between(pd.Timestamp(dt_ini), pd.Timestamp(dt_fim), inclusive="both")
-    df = df[mask | df["_DTENTREGA_DT"].isna()]
+if usar_data and dt_sel:
+    mask = df["_DTENTREGA_DT"].dt.date == dt_sel
+    df = df[mask]
 
 if sel_dev and COL_DEVOLUCION:
     df = df[df[COL_DEVOLUCION].isin(sel_dev)]
@@ -307,14 +303,14 @@ total_placas   = df[COL_PLACA].nunique() if COL_PLACA else 0
 
 # Info de filtros ativos
 filtros_info = []
-if usar_data and dt_ini and dt_fim:
-    filtros_info.append(f"📅 {dt_ini.strftime('%d/%m/%y')} → {dt_fim.strftime('%d/%m/%y')}")
+if usar_data and dt_sel:
+    filtros_info.append(f"📅 {dt_sel.strftime('%d/%m/%Y')}")
 if sel_dev:
     filtros_info.append(f"👷 {', '.join(sel_dev[:2])}{'...' if len(sel_dev)>2 else ''}")
 if sel_motivo:
     filtros_info.append(f"❗ {len(sel_motivo)} motivo(s)")
 if filtros_info:
-    st.info(f"🔎 Filtros: {' · '.join(filtros_info)} — **{total_notas:,} registros filtrados**".replace(",","."))
+    st.info(f"🔎 Filtros: {' · '.join(filtros_info)} — **{total_notas} registros filtrados**")
 
 # ══════════════════════════════════════════════════════════════
 # TABS
@@ -458,6 +454,75 @@ with tab_dash:
             st.info("Sem dados de placa para o filtro selecionado")
     else:
         st.warning("Coluna PLACA não encontrada na planilha")
+
+    # ── GRÁFICO: Motivo por Placa ────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Motivo de Devolução por Placa</h3></div>', unsafe_allow_html=True)
+
+    if COL_PLACA and COL_MOTIVO:
+        df_pm = (
+            df[(df[COL_PLACA].str.strip() != "") & (df[COL_MOTIVO].str.strip() != "")]
+            .groupby([COL_PLACA, COL_MOTIVO])
+            .agg(Qtd=(VALOR_COL, "count"), Valor=(VALOR_COL, "sum"))
+            .reset_index()
+        )
+        if not df_pm.empty:
+            # Pega top motivo por placa para label
+            top_motivos = df_pm.loc[df_pm.groupby(COL_PLACA)["Qtd"].idxmax()][[COL_PLACA, COL_MOTIVO, "Qtd", "Valor"]].copy()
+            
+            # Ordena pelas mesmas placas do grafico principal
+            if not df_placa.empty:
+                placa_order = df_placa[COL_PLACA].tolist()
+                top_motivos[COL_PLACA] = pd.Categorical(top_motivos[COL_PLACA], categories=placa_order, ordered=True)
+                top_motivos = top_motivos.sort_values(COL_PLACA)
+
+            # Gráfico stacked bar — todas as combinações placa x motivo
+            df_pm_sorted = df_pm.copy()
+            if not df_placa.empty:
+                df_pm_sorted[COL_PLACA] = pd.Categorical(df_pm_sorted[COL_PLACA], categories=placa_order, ordered=True)
+                df_pm_sorted = df_pm_sorted.sort_values(COL_PLACA)
+
+            fig_pm = px.bar(
+                df_pm_sorted,
+                x=COL_PLACA,
+                y="Qtd",
+                color=COL_MOTIVO,
+                color_discrete_sequence=MIXED,
+                barmode="stack",
+                text="Qtd",
+                labels={COL_PLACA: "Placa", "Qtd": "Qtd. Devoluções", COL_MOTIVO: "Motivo"},
+                custom_data=[COL_MOTIVO, "Valor"],
+            )
+            fig_pm.update_traces(
+                textposition="inside",
+                textfont_size=9,
+                hovertemplate="<b>%{x}</b><br>Motivo: %{customdata[0]}<br>Qtd: %{y}<extra></extra>",
+            )
+            h_pm = max(420, min(len(df_pm_sorted[COL_PLACA].unique()) * 34, 680))
+            fig_pm.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(255,255,255,0.015)",
+                font=dict(color="#94a3b8", family="Space Grotesk"),
+                height=h_pm,
+                margin=dict(t=30, b=90, l=12, r=12),
+                bargap=0.28,
+                xaxis=dict(tickfont=dict(color="#b0bec5", size=11, family="DM Mono"),
+                           gridcolor="rgba(255,255,255,0.04)",
+                           linecolor="rgba(255,255,255,0.06)",
+                           tickangle=-38),
+                yaxis=dict(tickfont=dict(color="#64748b", size=10),
+                           gridcolor="rgba(255,255,255,0.05)"),
+                legend=dict(bgcolor="rgba(8,15,35,0.92)",
+                            bordercolor="rgba(56,189,248,0.18)", borderwidth=1,
+                            font=dict(color="#94a3b8", size=10),
+                            title_text="Motivo",
+                            orientation="v"),
+            )
+            st.plotly_chart(fig_pm, use_container_width=True)
+        else:
+            st.info("Sem dados suficientes para combinar Placa × Motivo")
+    else:
+        st.warning("Colunas PLACA e/ou MOTIVO não encontradas")
 
     st.markdown("---")
 
