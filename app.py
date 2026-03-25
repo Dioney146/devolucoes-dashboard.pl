@@ -18,15 +18,13 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;background:#060d1f;}
-/* Background image via fixed div injected below */
 .bg-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;}
 .bg-img{position:absolute;inset:0;width:100%;height:100%;
-  background-image:url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1920&q=80');
+  background-image:url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1920&q=80');
   background-size:cover;background-position:center center;
-  filter:blur(6px) brightness(0.13) saturate(0.4);transform:scale(1.06);}
+  filter:blur(5px) brightness(0.12) saturate(0.35);transform:scale(1.06);}
 .bg-tint{position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(4,9,20,0.93) 0%,rgba(6,14,35,0.88) 50%,rgba(4,12,28,0.95) 100%);}
-/* Make streamlit containers transparent so bg shows through */
+  background:linear-gradient(135deg,rgba(4,9,20,0.94) 0%,rgba(6,14,35,0.89) 50%,rgba(4,12,28,0.96) 100%);}
 .stApp,[data-testid="stAppViewContainer"],[data-testid="stHeader"],[data-testid="stToolbar"]{background:transparent!important;}
 [data-testid="stAppViewContainer"]>section{background:transparent!important;}
 .main .block-container{position:relative;z-index:1;}
@@ -201,7 +199,9 @@ COL_NF_VENDA  = get_col(["NOTA_VENDA","NF_VENDA","NF_SAIDA","NOTA_SAIDA","NOTA_F
 COL_NUMCAR    = get_col(["NUMCAR","NUM_CARREGAMENTO","CARREGAMENTO","NR_CARREGAMENTO"])
 COL_CODCLI    = get_col(["CODCLI","COD_CLI","CLI","NUM_PEDIDO","PEDIDO"])
 COL_DTSAIDA   = get_col(["DTSAIDA","DATA_DEVOLUCAO","DATA","DT_DEVOLUCAO","DATA_EMISSAO"])
-COL_DTENTREGA = get_col(["DTENTREGA","DATA_ENTREGA","DT_ENTREGA","DATAENTREGA"])
+
+# ── DTENT: prioriza exatamente "DTENT" e variações próximas ──────────────────
+COL_DTENTREGA = get_col(["DTENT","DTENTREGA","DATA_ENTREGA","DT_ENTREGA","DATAENTREGA","DATA_ENTREGA_REAL"])
 
 if VALOR_COL not in df_raw.columns:
     df_raw[VALOR_COL] = 0.0
@@ -219,13 +219,22 @@ for col in df_raw.columns:
     if col != VALOR_COL:
         df_raw[col] = df_raw[col].fillna("").astype(str).str.strip()
 
+# Parse DTENT com múltiplos formatos
 if COL_DTENTREGA:
-    df_raw["_DTENTREGA_DT"] = pd.to_datetime(df_raw[COL_DTENTREGA], dayfirst=True, errors="coerce")
+    df_raw["_DTENTREGA_DT"] = pd.to_datetime(
+        df_raw[COL_DTENTREGA],
+        dayfirst=True,
+        errors="coerce"
+    )
+    # Tenta formato alternativo se necessário
+    mask_nat = df_raw["_DTENTREGA_DT"].isna() & (df_raw[COL_DTENTREGA] != "")
+    if mask_nat.any():
+        alt = pd.to_datetime(df_raw.loc[mask_nat, COL_DTENTREGA], format="%Y-%m-%d", errors="coerce")
+        df_raw.loc[mask_nat, "_DTENTREGA_DT"] = alt
 else:
     df_raw["_DTENTREGA_DT"] = pd.NaT
 
 # ── TOPBAR ────────────────────────────────────────────────────────────────────
-# Inject background overlay div — works reliably in Streamlit
 st.markdown("""
 <div class="bg-overlay">
   <div class="bg-img"></div>
@@ -259,15 +268,16 @@ dt_sel = None
 
 with fc1:
     datas_ok = df_raw["_DTENTREGA_DT"].dropna()
+    col_label = COL_DTENTREGA if COL_DTENTREGA else "DTENT"
     if len(datas_ok) > 0:
         datas_unicas = sorted(datas_ok.dt.date.unique())
         opcoes_data = ["— Todas as datas —"] + [d.strftime("%d/%m/%Y") for d in datas_unicas]
-        sel_data_str = st.selectbox("📅 Data de Entrega (DTENT)", opcoes_data, key="g_dtsel")
+        sel_data_str = st.selectbox(f"📅 Data de Entrega ({col_label})", opcoes_data, key="g_dtsel")
         if sel_data_str != "— Todas as datas —":
             dt_sel = datetime.strptime(sel_data_str, "%d/%m/%Y").date()
             usar_data = True
     else:
-        st.caption("⚠️ Sem datas DTENT válidas na planilha")
+        st.caption(f"⚠️ Sem datas válidas na coluna {col_label}")
 
 with fc2:
     if COL_DEVOLUCION:
@@ -314,7 +324,6 @@ total_clientes = df[COL_CLIENTE].nunique() if COL_CLIENTE else 0
 ticket_medio   = total_val / total_notas if total_notas > 0 else 0
 total_placas   = df[COL_PLACA].nunique() if COL_PLACA else 0
 
-# Info de filtros ativos
 filtros_info = []
 if usar_data and dt_sel:
     filtros_info.append(f"📅 {dt_sel.strftime('%d/%m/%Y')}")
@@ -380,7 +389,6 @@ with tab_dash:
 
         if not df_placa.empty:
             n = len(df_placa)
-            # Cores: top 5 vermelho, 6-10 laranja, resto azul
             bar_colors = []
             for i in range(n):
                 if i < 5:      bar_colors.append("#ef4444")
@@ -468,74 +476,111 @@ with tab_dash:
     else:
         st.warning("Coluna PLACA não encontrada na planilha")
 
-    # ── GRÁFICO: Motivo por Placa ────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════
+    # GRÁFICO: Motivos de Devolução — Valor (R$) por Motivo
+    # ══════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Motivo de Devolução por Placa</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Valor de Devolução por Motivo</h3></div>', unsafe_allow_html=True)
 
-    if COL_PLACA and COL_MOTIVO:
-        df_pm = (
-            df[(df[COL_PLACA].str.strip() != "") & (df[COL_MOTIVO].str.strip() != "")]
-            .groupby([COL_PLACA, COL_MOTIVO])
-            .agg(Qtd=(VALOR_COL, "count"), Valor=(VALOR_COL, "sum"))
+    if COL_MOTIVO:
+        df_motivo_val = (
+            df[df[COL_MOTIVO].str.strip() != ""]
+            .groupby(COL_MOTIVO)
+            .agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
             .reset_index()
+            .sort_values("Valor", ascending=False)
         )
-        if not df_pm.empty:
-            # Pega top motivo por placa para label
-            top_motivos = df_pm.loc[df_pm.groupby(COL_PLACA)["Qtd"].idxmax()][[COL_PLACA, COL_MOTIVO, "Qtd", "Valor"]].copy()
-            
-            # Ordena pelas mesmas placas do grafico principal
-            if not df_placa.empty:
-                placa_order = df_placa[COL_PLACA].tolist()
-                top_motivos[COL_PLACA] = pd.Categorical(top_motivos[COL_PLACA], categories=placa_order, ordered=True)
-                top_motivos = top_motivos.sort_values(COL_PLACA)
 
-            # Gráfico stacked bar — todas as combinações placa x motivo
-            df_pm_sorted = df_pm.copy()
-            if not df_placa.empty:
-                df_pm_sorted[COL_PLACA] = pd.Categorical(df_pm_sorted[COL_PLACA], categories=placa_order, ordered=True)
-                df_pm_sorted = df_pm_sorted.sort_values(COL_PLACA)
+        if not df_motivo_val.empty:
+            n_mot = len(df_motivo_val)
 
-            fig_pm = px.bar(
-                df_pm_sorted,
-                x=COL_PLACA,
-                y="Qtd",
-                color=COL_MOTIVO,
-                color_discrete_sequence=MIXED,
-                barmode="stack",
-                text="Qtd",
-                labels={COL_PLACA: "Placa", "Qtd": "Qtd. Devoluções", COL_MOTIVO: "Motivo"},
-                custom_data=[COL_MOTIVO, "Valor"],
-            )
-            fig_pm.update_traces(
-                textposition="inside",
-                textfont_size=9,
-                hovertemplate="<b>%{x}</b><br>Motivo: %{customdata[0]}<br>Qtd: %{y}<extra></extra>",
-            )
-            h_pm = max(420, min(len(df_pm_sorted[COL_PLACA].unique()) * 34, 680))
-            fig_pm.update_layout(
+            # Cores por ranking
+            bar_colors_mot = []
+            for i in range(n_mot):
+                if i < 3:      bar_colors_mot.append("#ef4444")
+                elif i < 6:    bar_colors_mot.append("#f97316")
+                else:          bar_colors_mot.append("#0ea5e9")
+
+            fig_mot = go.Figure()
+
+            fig_mot.add_trace(go.Bar(
+                x=df_motivo_val[COL_MOTIVO],
+                y=df_motivo_val["Valor"],
+                name="Valor Total (R$)",
+                marker=dict(
+                    color=bar_colors_mot,
+                    opacity=0.9,
+                    line=dict(color="rgba(255,255,255,0.06)", width=0.5)
+                ),
+                text=[fmt_brl(v) for v in df_motivo_val["Valor"]],
+                textposition="outside",
+                textfont=dict(size=9, color="#94a3b8", family="DM Mono"),
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    "Valor: <b>%{text}</b><br>"
+                    "<extra></extra>"
+                ),
+            ))
+
+            h_mot = max(440, min(n_mot * 60, 680))
+            fig_mot.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(255,255,255,0.015)",
                 font=dict(color="#94a3b8", family="Space Grotesk"),
-                height=h_pm,
-                margin=dict(t=30, b=90, l=12, r=12),
-                bargap=0.28,
-                xaxis=dict(tickfont=dict(color="#b0bec5", size=11, family="DM Mono"),
-                           gridcolor="rgba(255,255,255,0.04)",
-                           linecolor="rgba(255,255,255,0.06)",
-                           tickangle=-38),
-                yaxis=dict(tickfont=dict(color="#64748b", size=10),
-                           gridcolor="rgba(255,255,255,0.05)"),
-                legend=dict(bgcolor="rgba(8,15,35,0.92)",
-                            bordercolor="rgba(56,189,248,0.18)", borderwidth=1,
-                            font=dict(color="#94a3b8", size=10),
-                            title_text="Motivo",
-                            orientation="v"),
+                height=h_mot,
+                margin=dict(t=40, b=110, l=12, r=30),
+                bargap=0.32,
+                xaxis=dict(
+                    tickfont=dict(color="#b0bec5", size=11, family="Space Grotesk"),
+                    gridcolor="rgba(255,255,255,0.04)",
+                    linecolor="rgba(255,255,255,0.06)",
+                    tickangle=-35,
+                    automargin=True,
+                ),
+                yaxis=dict(
+                    title=dict(text="Valor Total (R$)", font=dict(color="#64748b", size=11)),
+                    tickfont=dict(color="#64748b", size=10),
+                    gridcolor="rgba(255,255,255,0.05)",
+                    linecolor="rgba(255,255,255,0.06)",
+                    tickformat=",.0f",
+                ),
+                legend=dict(
+                    bgcolor="rgba(8,15,35,0.92)",
+                    bordercolor="rgba(56,189,248,0.2)", borderwidth=1,
+                    font=dict(color="#94a3b8", size=11),
+                    orientation="h", x=0.5, xanchor="center", y=1.06,
+                ),
+                showlegend=False,
             )
-            st.plotly_chart(fig_pm, use_container_width=True)
+
+            st.plotly_chart(fig_mot, use_container_width=True)
+
+            # Legenda de cores
+            st.markdown("""
+            <div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;">
+              <span>🔴 Top 3 motivos — maior impacto financeiro</span>
+              <span>🟠 4º–6º — atenção</span>
+              <span>🔵 Demais motivos</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Tabela resumo ao lado
+            with st.expander("📋 Ver tabela de motivos por valor"):
+                df_mot_display = df_motivo_val.copy()
+                df_mot_display["Valor (R$)"] = df_mot_display["Valor"].apply(fmt_brl)
+                df_mot_display["% do Total"] = (
+                    (df_mot_display["Valor"] / total_val * 100).round(1).astype(str) + "%"
+                    if total_val > 0 else "0%"
+                )
+                df_mot_display = df_mot_display.rename(columns={COL_MOTIVO: "Motivo", "Qtd": "Qtd."})
+                st.dataframe(
+                    df_mot_display[["Motivo", "Qtd.", "Valor (R$)", "% do Total"]],
+                    use_container_width=True, hide_index=True
+                )
         else:
-            st.info("Sem dados suficientes para combinar Placa × Motivo")
+            st.info("Sem dados de motivo para o filtro selecionado")
     else:
-        st.warning("Colunas PLACA e/ou MOTIVO não encontradas")
+        st.warning("Coluna MOTIVO não encontrada na planilha")
 
     st.markdown("---")
 
@@ -650,9 +695,10 @@ with tab_campos:
     with sr4:
         s_placa2 = st.text_input("🚚 Placa", placeholder="Ex: PHY6J84", key="sc_placa")
 
+    # ── Monta lista de campos priorizando DTENT ────────────────────────────────
     CAMPOS = [
         (COL_DTSAIDA,    "Data Saída"),
-        (COL_DTENTREGA,  "Data Entrega"),
+        (COL_DTENTREGA,  "Data Entrega (DTENT)"),   # <-- label atualizado
         (COL_NF_VENDA,   "Nota Fiscal"),
         (COL_NUMCAR,     "Carregamento"),
         (COL_PLACA,      "Placa"),
@@ -676,6 +722,10 @@ with tab_campos:
         df_campos = df_campos[df_campos["Cód. Cliente"].str.contains(s_ped.strip(), case=False, na=False)]
     if s_placa2.strip() and "Placa" in df_campos.columns:
         df_campos = df_campos[df_campos["Placa"].str.contains(s_placa2.strip(), case=False, na=False)]
+
+    # Filtro adicional de data na aba Campos (DTENT)
+    if "Data Entrega (DTENT)" in df_campos.columns and usar_data and dt_sel:
+        st.info(f"📅 Filtro de data ativo: {dt_sel.strftime('%d/%m/%Y')} (coluna {COL_DTENTREGA})")
 
     st.markdown("---")
     st.caption(f"Exibindo {len(df_campos):,} registros (filtros globais + pesquisa acima)".replace(",","."))
@@ -728,6 +778,6 @@ with tab_dados:
         st.write(f"**Colunas ({len(actual_cols)}):** `{actual_cols}`")
         st.write(f"Valor=`{VALOR_COL}` | Placa=`{COL_PLACA}` | Motivo=`{COL_MOTIVO}`")
         st.write(f"Cliente=`{COL_CLIENTE}` | Devolucionista=`{COL_DEVOLUCION}`")
-        st.write(f"DataSaída=`{COL_DTSAIDA}` | DataEntrega=`{COL_DTENTREGA}`")
+        st.write(f"DataSaída=`{COL_DTSAIDA}` | DataEntrega(DTENT)=`{COL_DTENTREGA}`")
         st.write(f"Registros com valor > 0: {(df_raw[VALOR_COL]>0).sum()}")
         st.dataframe(df_raw[display_cols].head(5), use_container_width=True)
