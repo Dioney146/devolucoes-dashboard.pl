@@ -17,14 +17,19 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;}
-.stApp::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;
+html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;background:#060d1f;}
+/* Background image via fixed div injected below */
+.bg-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;}
+.bg-img{position:absolute;inset:0;width:100%;height:100%;
   background-image:url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1920&q=80');
-  background-size:cover;background-position:center;
-  filter:blur(8px) brightness(0.14) saturate(0.5);z-index:-2;transform:scale(1.05);}
-.stApp::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;
-  background:linear-gradient(135deg,rgba(4,9,20,0.95) 0%,rgba(6,14,35,0.91) 50%,rgba(4,12,28,0.97) 100%);
-  z-index:-1;}
+  background-size:cover;background-position:center center;
+  filter:blur(6px) brightness(0.13) saturate(0.4);transform:scale(1.06);}
+.bg-tint{position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(4,9,20,0.93) 0%,rgba(6,14,35,0.88) 50%,rgba(4,12,28,0.95) 100%);}
+/* Make streamlit containers transparent so bg shows through */
+.stApp,[data-testid="stAppViewContainer"],[data-testid="stHeader"],[data-testid="stToolbar"]{background:transparent!important;}
+[data-testid="stAppViewContainer"]>section{background:transparent!important;}
+.main .block-container{position:relative;z-index:1;}
 #MainMenu,footer,header{visibility:hidden;}
 .stDeployButton{display:none;}
 
@@ -220,6 +225,14 @@ else:
     df_raw["_DTENTREGA_DT"] = pd.NaT
 
 # ── TOPBAR ────────────────────────────────────────────────────────────────────
+# Inject background overlay div — works reliably in Streamlit
+st.markdown("""
+<div class="bg-overlay">
+  <div class="bg-img"></div>
+  <div class="bg-tint"></div>
+</div>
+""", unsafe_allow_html=True)
+
 now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
 st.markdown(f"""
 <div class="topbar">
@@ -375,8 +388,8 @@ with tab_dash:
                 else:          bar_colors.append("#0ea5e9")
 
             periodo = ""
-            if usar_data and dt_ini and dt_fim:
-                periodo = f"{dt_ini.strftime('%d/%m/%Y')}  →  {dt_fim.strftime('%d/%m/%Y')}"
+            if usar_data and dt_sel:
+                periodo = f"Data: {dt_sel.strftime('%d/%m/%Y')}"
 
             fig_placa = go.Figure()
 
