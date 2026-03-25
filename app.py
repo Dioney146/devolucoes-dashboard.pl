@@ -28,46 +28,77 @@ html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;background
 .stApp,[data-testid="stAppViewContainer"],[data-testid="stHeader"],[data-testid="stToolbar"]{background:transparent!important;}
 [data-testid="stAppViewContainer"]>section{background:transparent!important;}
 .main .block-container{position:relative;z-index:1;}
-#MainMenu,footer,header{visibility:hidden;}
-.stDeployButton{display:none;}
-/* Oculta rodapé "Hospedado com Streamlit" e avatar/nome do criador */
-[data-testid="stStatusWidget"]{display:none!important;}
-[data-testid="stToolbar"]{display:none!important;}
+#MainMenu,footer,header{visibility:hidden!important;display:none!important;}
+.stDeployButton{display:none!important;}
+
+/* ── Ocultar TUDO do Streamlit Cloud: badge, nome, avatar, toolbar ── */
+[data-testid="stStatusWidget"]{display:none!important;visibility:hidden!important;}
+[data-testid="stToolbar"]{display:none!important;visibility:hidden!important;}
+[data-testid="stHeader"]{display:none!important;visibility:hidden!important;}
+[data-testid="stDecoration"]{display:none!important;}
+[data-testid="collapsedControl"]{display:none!important;}
 iframe[title="streamlit_cloud_info"]{display:none!important;}
 div[class*="StatusWidget"]{display:none!important;}
 div[class*="viewerBadge"]{display:none!important;}
+div[class*="streamlit-badge"]{display:none!important;}
 .viewerBadge_container__1QSob{display:none!important;}
 .styles_viewerBadge__1yB5_{display:none!important;}
 #stDecoration{display:none!important;}
-/* Oculta menu de 3 pontos, header nativo e ícone do usuário no topo */
-[data-testid="stHeader"]{display:none!important;visibility:hidden!important;}
-[data-testid="stDecoration"]{display:none!important;}
-button[kind="header"]{display:none!important;}
-[data-testid="collapsedControl"]{display:none!important;}
-/* Oculta nome/avatar que aparece no canto superior direito */
 .stApp > header{display:none!important;}
-section[data-testid="stSidebar"] ~ div > div:first-child > div:first-child{display:none!important;}
 [data-baseweb="avatar"]{display:none!important;}
 [aria-label*="user"],[aria-label*="profile"],[aria-label*="account"]{display:none!important;}
+button[kind="header"]{display:none!important;}
+/* Badge vermelho inferior direito "Hospedado com Streamlit" */
+div[class*="badge"]{display:none!important;}
+a[href*="streamlit.io"]{pointer-events:none!important;opacity:0!important;}
 
-.topbar{background:linear-gradient(90deg,rgba(6,11,28,0.97),rgba(8,16,38,0.97));
-  border-bottom:2px solid rgba(56,189,248,0.28);padding:22px 44px;
-  display:flex;align-items:center;justify-content:flex-start;gap:22px;
-  margin:-6rem -1rem 0;position:sticky;top:0;z-index:999;
-  backdrop-filter:blur(24px);box-shadow:0 4px 50px rgba(0,0,0,0.7);}
-.topbar-brand{display:flex;align-items:center;gap:20px;flex:1;}
-.topbar-brand .icon{width:54px;height:54px;background:linear-gradient(135deg,#0ea5e9,#2563eb);
-  border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;
-  box-shadow:0 0 28px rgba(14,165,233,0.5);flex-shrink:0;}
-.topbar-brand h1{font-family:'Bebas Neue',sans-serif!important;font-size:2.6rem!important;
-  font-weight:400!important;color:#f0f9ff!important;letter-spacing:0.14em;margin:0!important;
-  text-shadow:0 0 40px rgba(56,189,248,0.35);line-height:1;}
-.topbar-brand span{font-size:0.72rem;color:#4a6080;display:block;font-weight:500;
-  letter-spacing:0.14em;text-transform:uppercase;margin-top:3px;}
-.topbar-right{display:flex;align-items:center;gap:18px;}
-.live-badge{display:none;}
-.live-dot{display:none;}
-.topbar-time{display:none;}
+/* ══ TOPBAR ══════════════════════════════════════════════════ */
+.topbar{
+  background:linear-gradient(100deg,rgba(4,10,26,0.98) 0%,rgba(7,18,44,0.98) 60%,rgba(5,14,34,0.98) 100%);
+  border-bottom:1px solid rgba(56,189,248,0.18);
+  padding:0 48px;
+  height:88px;
+  display:flex;align-items:center;justify-content:flex-start;
+  margin:-6rem -1rem 0;
+  position:sticky;top:0;z-index:999;
+  backdrop-filter:blur(28px);
+  box-shadow:0 2px 60px rgba(0,0,0,0.75),0 1px 0 rgba(56,189,248,0.08);}
+
+.topbar-inner{display:flex;align-items:center;gap:24px;width:100%;}
+
+.topbar-icon{
+  width:52px;height:52px;
+  background:linear-gradient(135deg,#0284c7 0%,#1d4ed8 100%);
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;flex-shrink:0;
+  box-shadow:0 0 0 1px rgba(56,189,248,0.25),0 0 24px rgba(14,165,233,0.4);}
+
+.topbar-divider{
+  width:1px;height:48px;
+  background:linear-gradient(180deg,transparent,rgba(56,189,248,0.3),transparent);
+  flex-shrink:0;margin:0 4px;}
+
+.topbar-text{display:flex;flex-direction:column;justify-content:center;gap:4px;}
+
+.topbar-title{
+  font-family:'Bebas Neue',sans-serif!important;
+  font-size:2.15rem!important;
+  font-weight:400!important;
+  color:#f8fafc!important;
+  letter-spacing:0.18em;
+  line-height:1;
+  margin:0!important;
+  text-shadow:0 0 32px rgba(56,189,248,0.28),0 2px 8px rgba(0,0,0,0.6);}
+
+.topbar-sub{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:0.64rem;
+  color:#334e6e;
+  font-weight:600;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+  margin:0;}
 
 .filter-bar{background:linear-gradient(135deg,rgba(10,18,42,0.93),rgba(12,22,50,0.93));
   border:1px solid rgba(56,189,248,0.2);border-radius:18px;padding:20px 28px 16px;
@@ -292,14 +323,54 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+# ── Remove badge do Streamlit Cloud via JavaScript (único método confiável) ──
+import streamlit.components.v1 as components
+components.html("""
+<script>
+(function removeBadge() {
+  const selectors = [
+    '[data-testid="stStatusWidget"]',
+    '[data-testid="stToolbar"]',
+    'iframe[title="streamlit_cloud_info"]',
+    '.viewerBadge_container__1QSob',
+    '.styles_viewerBadge__1yB5_',
+    'div[class*="StatusWidget"]',
+    'div[class*="viewerBadge"]',
+    'div[class*="streamlit-badge"]',
+    '#stDecoration',
+    'a[href*="streamlit.io/cloud"]',
+  ];
+  function hide() {
+    selectors.forEach(function(sel) {
+      try {
+        var els = window.parent.document.querySelectorAll(sel);
+        els.forEach(function(el) { el.style.setProperty('display','none','important'); });
+      } catch(e) {}
+    });
+    // remove imagem de perfil / nome do criador no header
+    try {
+      var header = window.parent.document.querySelector('[data-testid="stHeader"]');
+      if (header) header.style.setProperty('display','none','important');
+    } catch(e) {}
+  }
+  hide();
+  // Observa mudanças no DOM (o badge é injetado depois)
+  var observer = new MutationObserver(hide);
+  try {
+    observer.observe(window.parent.document.body, { childList: true, subtree: true });
+  } catch(e) {}
+})();
+</script>
+""", height=0)
+
 st.markdown(f"""
 <div class="topbar">
-  <div class="topbar-brand">
-    <div class="icon">📦</div>
-    <div>
-      <h1>GESTÃO DE DEVOLUÇÕES DELLY'S</h1>
-      <span>Módulo de Análise e Controle Operacional</span>
+  <div class="topbar-inner">
+    <div class="topbar-icon">📦</div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-text">
+      <p class="topbar-title">GESTÃO DE DEVOLUÇÕES DELLY'S</p>
+      <p class="topbar-sub">Módulo de Análise e Controle Operacional</p>
     </div>
   </div>
 </div>
