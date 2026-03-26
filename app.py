@@ -318,33 +318,74 @@ else:
     df_raw["_DTENTREGA_DT"] = pd.NaT
 
 # ── Normaliza colunas reentregas ──────────────────────────────────────────────
+# Colunas reais da aba "8261-REENTREGAS 2026" (obtidas da planilha):
+# NUMNOTA, DTFAT, SERIE, ESPECIE, DTSAIDA, VLTOT, GERTOT, PESO, NUMTRANS,
+# VENDA, NUMCARANTERIOR, PLACAANT, COD MOT ANTERIOR, NOME MOT ANTERIOR,
+# COD AJU ANTERIOR, NOME AJU ANTERIOR, NUMCARATUAL, PLACAATUAL,
+# COD MOT ATUAL, NOME MOT ATUAL, COD AJU ATUAL, NOME AJU ATUAL,
+# DTRANSF, CODMOTIVO, MOTIVOTRANSF, CODCLI, CLIENTE, BAIRROENT,
+# CODPRACA, PRACA, ROTA, NUMPED, CODUSU, RNOME
+
 REENT_COLS_MAP = {
-    "DATATRANSF": ["DATATRANSF","DATA_TRANSF","DATA TRANSF","DATA_TRANSFERENCIA","DATA"],
-    "NUMPED":     ["NUMPED","NUM_PED","PEDIDO","NUM_PEDIDO"],
-    "NUMNOTA":    ["NUMNOTA","NUM_NOTA","NOTA","NOTA_FISCAL","NF"],
-    "CLIENTE":    ["CLIENTE","NOMECLIENTE","NOME_CLIENTE","RAZAO_SOCIAL"],
-    "CODCLI":     ["CODCLI","COD_CLI","CODIGO","COD"],
-    "NUMCARANTERIOR": ["NUMCARANTERIOR","NUM_CAR_ANT","CARREGAMENTO_ANTERIOR","CARANTERIOR"],
-    "PLACAANT":   ["PLACAANT","PLACA_ANT","PLACA_ANTERIOR"],
-    "NUMCARATUAL":["NUMCARATUAL","NUM_CAR_ATUAL","CARREGAMENTO_ATUAL","CARATUAL"],
-    "PLACAATUAL": ["PLACAATUAL","PLACA_ATUAL"],
-    "MOTIVOTRANSF":["MOTIVOTRANSF","MOTIVO_TRANSF","MOTIVO","MOTIVO_TRANSFERENCIA"],
-    "PRACA":      ["PRACA","PRAÇA","CIDADE","MUNICIPIO","DESTINO"],
-    "NOME":       ["NOME","VENDEDOR","NOME_VENDEDOR","NOMEVEND"],
+    # Chave canônica  →  lista de variações possíveis (a planilha usa exatamente as primeiras)
+    "NUMNOTA":            ["NUMNOTA"],
+    "DTFAT":              ["DTFAT"],
+    "SERIE":              ["SERIE"],
+    "ESPECIE":            ["ESPECIE"],
+    "DTSAIDA":            ["DTSAIDA"],
+    "VLTOT":              ["VLTOT"],
+    "GERTOT":             ["GERTOT"],
+    "PESO":               ["PESO"],
+    "NUMTRANS":           ["NUMTRANS"],
+    "VENDA":              ["VENDA"],
+    "NUMCARANTERIOR":     ["NUMCARANTERIOR"],
+    "PLACAANT":           ["PLACAANT"],
+    "COD_MOT_ANTERIOR":   ["COD MOT ANTERIOR","COD_MOT_ANTERIOR"],
+    "NOME_MOT_ANTERIOR":  ["NOME MOT ANTERIOR","NOME_MOT_ANTERIOR"],
+    "COD_AJU_ANTERIOR":   ["COD AJU ANTERIOR","COD_AJU_ANTERIOR"],
+    "NOME_AJU_ANTERIOR":  ["NOME AJU ANTERIOR","NOME_AJU_ANTERIOR"],
+    "NUMCARATUAL":        ["NUMCARATUAL"],
+    "PLACAATUAL":         ["PLACAATUAL"],
+    "COD_MOT_ATUAL":      ["COD MOT ATUAL","COD_MOT_ATUAL"],
+    "NOME_MOT_ATUAL":     ["NOME MOT ATUAL","NOME_MOT_ATUAL"],
+    "COD_AJU_ATUAL":      ["COD AJU ATUAL","COD_AJU_ATUAL"],
+    "NOME_AJU_ATUAL":     ["NOME AJU ATUAL","NOME_AJU_ATUAL"],
+    "DATATRANSF":         ["DTRANSF","DATATRANSF","DATA_TRANSF"],
+    "CODMOTIVO":          ["CODMOTIVO"],
+    "MOTIVOTRANSF":       ["MOTIVOTRANSF"],
+    "CODCLI":             ["CODCLI"],
+    "CLIENTE":            ["CLIENTE"],
+    "BAIRROENT":          ["BAIRROENT"],
+    "CODPRACA":           ["CODPRACA"],
+    "PRACA":              ["PRACA"],
+    "ROTA":               ["ROTA"],
+    "NUMPED":             ["NUMPED"],
+    "CODUSU":             ["CODUSU"],
+    "NOME":               ["RNOME","NOME"],
 }
 
 df_reent = None
 reent_cols = {}
 
 if df_reent_raw is not None:
-    df_reent_raw.columns = [str(c).strip().upper().replace(" ","_") for c in df_reent_raw.columns]
+    # Normaliza: strip espaços nas bordas, uppercase, mas preserva espaços internos
+    # para colunas como "COD MOT ANTERIOR"
+    df_reent_raw.columns = [str(c).strip().upper() for c in df_reent_raw.columns]
+
+    def get_col_reent(alternatives):
+        """Busca coluna pelo nome exato (após strip+upper)."""
+        for n in alternatives:
+            n_norm = n.strip().upper()
+            if n_norm in df_reent_raw.columns:
+                return n_norm
+        return None
 
     for canonical, alternatives in REENT_COLS_MAP.items():
-        found = get_col(df_reent_raw, alternatives)
+        found = get_col_reent(alternatives)
         reent_cols[canonical] = found
 
-    # Valor col para reentregas (pode não existir - usamos contagem)
-    REENT_VALOR_COL = get_col(df_reent_raw, ["VLT","VLTOTAL","VL_TOTAL","VALOR","TOTAL","VLF","VLRTOTAL","VALOR_TOTAL"])
+    # Valor col para reentregas — coluna real é VLTOT
+    REENT_VALOR_COL = get_col_reent(["VLTOT","VLTOTAL","VL_TOTAL","VALOR","TOTAL"])
 
     if REENT_VALOR_COL:
         df_reent_raw[REENT_VALOR_COL] = df_reent_raw[REENT_VALOR_COL].apply(parse_brl).fillna(0)
@@ -356,7 +397,7 @@ if df_reent_raw is not None:
         if col != REENT_VALOR_COL:
             df_reent_raw[col] = df_reent_raw[col].fillna("").astype(str).str.strip()
 
-    # Parse data de transferência
+    # Parse data de transferência — coluna real é DTRANSF
     dt_col = reent_cols.get("DATATRANSF")
     if dt_col:
         df_reent_raw["_DATATRANSF_DT"] = pd.to_datetime(df_reent_raw[dt_col], dayfirst=True, errors="coerce")
@@ -1266,20 +1307,33 @@ with tab_reent_det:
         with ds4:
             s_placa_r = st.text_input("🚚 Placa", placeholder="Ex: PHV5649", key="det_placa")
 
-        # Monta tabela com colunas especificadas
+        # Monta tabela com colunas especificadas — usando nomes reais da planilha
         REENT_DISPLAY_COLS = [
-            ("DATATRANSF",    "Data de Transf."),
-            ("NUMPED",        "Pedido"),
-            ("NUMNOTA",       "Nota Fiscal"),
-            ("CLIENTE",       "Cliente"),
-            ("CODCLI",        "Código"),
-            ("NUMCARANTERIOR","Car. Anterior"),
-            ("PLACAANT",      "Placa Anterior"),
-            ("NUMCARATUAL",   "Car. Atual"),
-            ("PLACAATUAL",    "Placa Atual"),
-            ("MOTIVOTRANSF",  "Motivo"),
-            ("PRACA",         "Praça"),
-            ("NOME",          "Vendedor"),
+            ("DATATRANSF",        "Data Transf."),
+            ("NUMPED",            "Pedido"),
+            ("NUMNOTA",           "Nota Fiscal"),
+            ("DTFAT",             "Dt. Faturamento"),
+            ("DTSAIDA",           "Dt. Saída"),
+            ("CLIENTE",           "Cliente"),
+            ("CODCLI",            "Código"),
+            ("BAIRROENT",         "Bairro"),
+            ("CODPRACA",          "Cód. Praça"),
+            ("PRACA",             "Praça"),
+            ("ROTA",              "Rota"),
+            ("NUMCARANTERIOR",    "Car. Anterior"),
+            ("PLACAANT",          "Placa Anterior"),
+            ("NOME_MOT_ANTERIOR", "Motorista Anterior"),
+            ("NOME_AJU_ANTERIOR", "Ajudante Anterior"),
+            ("NUMCARATUAL",       "Car. Atual"),
+            ("PLACAATUAL",        "Placa Atual"),
+            ("NOME_MOT_ATUAL",    "Motorista Atual"),
+            ("NOME_AJU_ATUAL",    "Ajudante Atual"),
+            ("CODMOTIVO",         "Cód. Motivo"),
+            ("MOTIVOTRANSF",      "Motivo"),
+            ("VLTOT",             "Valor Total"),
+            ("PESO",              "Peso"),
+            ("NOME",              "Vendedor"),
+            ("CODUSU",            "Cód. Usuário"),
         ]
 
         cols_det_ok = [(reent_cols.get(k), label) for k, label in REENT_DISPLAY_COLS if reent_cols.get(k) is not None]
@@ -1294,14 +1348,11 @@ with tab_reent_det:
         if s_ped_r.strip() and "Pedido" in df_det.columns:
             df_det = df_det[df_det["Pedido"].str.contains(s_ped_r.strip(), case=False, na=False)]
         if s_placa_r.strip():
+            mask_placa = pd.Series([False] * len(df_det), index=df_det.index)
             for col_p in ["Placa Anterior", "Placa Atual"]:
                 if col_p in df_det.columns:
-                    df_det = df_det[
-                        df_det["Placa Anterior"].str.contains(s_placa_r.strip(), case=False, na=False) |
-                        df_det["Placa Atual"].str.contains(s_placa_r.strip(), case=False, na=False)
-                    ] if "Placa Anterior" in df_det.columns and "Placa Atual" in df_det.columns else \
-                    df_det[df_det[col_p].str.contains(s_placa_r.strip(), case=False, na=False)]
-                    break
+                    mask_placa = mask_placa | df_det[col_p].str.contains(s_placa_r.strip(), case=False, na=False)
+            df_det = df_det[mask_placa]
 
         st.markdown("---")
         st.caption(f"Exibindo {len(df_det):,} registros (filtro de data + pesquisa)".replace(",","."))
@@ -1498,5 +1549,6 @@ with tab_dados:
         st.write(f"DataSaída=`{COL_DTSAIDA}` | DataEntrega(DTENT)=`{COL_DTENTREGA}`")
         st.write(f"Registros com valor > 0: {(df_raw[VALOR_COL]>0).sum()}")
         if df_reent is not None:
-            st.write(f"**Colunas reentregas:** `{list(df_reent_raw.columns[:20])}`")
+            st.write(f"**Colunas reentregas ({len(df_reent_raw.columns)}):** `{list(df_reent_raw.columns)}`")
             st.write(f"Mapeamento reentregas: `{reent_cols}`")
+            st.write(f"Valor col reentregas: `{REENT_VALOR_COL}`")
