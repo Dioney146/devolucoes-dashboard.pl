@@ -280,35 +280,97 @@ GREEN_SCALE = ["#1c4532", "#276749", "#38a169", "#9ae6b4"]
 MIXED_SCALE = ["#1a365d", "#4299e1", "#38a169", "#ecc94b", "#e53e3e"]
 
 # ── URL da planilha ───────────────────────────────────────────────────────────
-# Publica a planilha em: Arquivo > Compartilhar > Publicar na web > CSV
-# e cole o link abaixo (ou configure a variável de ambiente GSHEETS_URL)
-GSHEETS_DEFAULT = (
-    "https://docs.google.com/spreadsheets/d/1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
-    "/export?format=csv&gid=0"
-)
-GSHEETS_URL = os.getenv("GSHEETS_URL", GSHEETS_DEFAULT)
+# ID da planilha extraído do link de compartilhamento
+SHEET_ID = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
+
+# Ordem de tentativa de URLs (da mais provável à menos)
+def get_candidate_urls(sheet_id: str):
+    return [
+        # 1) Export direto por ID (funciona se a planilha for pública/anyone with link)
+        f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0",
+        # 2) gviz (API pública, sem necessidade de publicação)
+        f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Plan1",
+        f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv",
+    ]
+
+# Pode ser sobrescrita por variável de ambiente (Streamlit Cloud Secrets)
+ENV_URL = os.getenv("GSHEETS_URL", "")
 
 # ── Carregamento ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=60)  # atualiza a cada 1 minuto
-def load_data(url: str) -> pd.DataFrame:
+def load_data(sheet_id: str, env_url: str) -> pd.DataFrame:
     headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "text/csv,application/csv,*/*",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
     }
-    try:
-        resp = requests.get(url, timeout=25, headers=headers)
-        resp.raise_for_status()
-        if "format=csv" in url or "output=csv" in url:
-            df = pd.read_csv(io.StringIO(resp.text))
-        else:
-            df = pd.read_excel(io.BytesIO(resp.content))
-        return df
-    except Exception as e:
-        st.error(f"❌ Erro ao carregar dados: {e}\n\nVerifique se a planilha está publicada publicamente.")
-        st.stop()
 
-with st.spinner("Carregando dados da planilha..."):
-    df_raw = load_data(GSHEETS_URL)
+    urls_to_try = []
+    if env_url:
+        urls_to_try.append(env_url)
+    urls_to_try.extend(get_candidate_urls(sheet_id))
+
+    last_error = None
+    for url in urls_to_try:
+        try:
+            resp = requests.get(url, timeout=25, headers=headers, allow_redirects=True)
+            resp.raise_for_status()
+            content_type = resp.headers.get("Content-Type", "")
+
+            # Detecta se retornou HTML de login (planilha privada)
+            if "text/html" in content_type and "<html" in resp.text[:200].lower():
+                last_error = "A planilha retornou uma página de login — ela ainda está privada."
+                continue
+
+            if "csv" in content_type or "text/plain" in content_type or url.endswith("csv") or "tqx=out:csv" in url or "format=csv" in url:
+                df = pd.read_csv(io.StringIO(resp.text))
+            else:
+                df = pd.read_excel(io.BytesIO(resp.content))
+
+            if df.empty:
+                last_error = f"URL retornou dados vazios: {url}"
+                continue
+
+            return df
+
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    # Nenhuma URL funcionou — mostra instruções claras
+    st.error("❌ Não foi possível carregar os dados da planilha.")
+    st.markdown("""
+### 🔧 Como corrigir
+
+A planilha precisa ser acessível publicamente. Siga **um** destes dois caminhos:
+
+---
+
+**Opção A — Mais simples: Compartilhar com "Qualquer pessoa com o link"**
+1. Abra a planilha no Google Sheets
+2. Clique em **Compartilhar** (canto superior direito)
+3. Em "Acesso geral", escolha **"Qualquer pessoa com o link"** → **Visualizador**
+4. Clique em **Concluído**
+5. Clique em **🔄 Atualizar** na sidebar
+
+---
+
+**Opção B — Publicar na web (para URL personalizada)**
+1. **Arquivo → Compartilhar → Publicar na web**
+2. Aba desejada → formato **CSV** → **Publicar**
+3. Copie o link gerado
+4. Cole na variável `GSHEETS_URL` no código (ou em Streamlit Secrets)
+
+---
+""")
+    if last_error:
+        st.caption(f"Último erro técnico: `{last_error}`")
+    st.stop()
+
+with st.spinner("🔄 Carregando dados da planilha..."):
+    df_raw = load_data(SHEET_ID, ENV_URL)
 
 # ── Normalização ──────────────────────────────────────────────────────────────
 df_raw.columns = [str(c).strip().upper().replace(" ", "_") for c in df_raw.columns]
