@@ -140,7 +140,7 @@ def fmt_brl(v):
         return "R$ 0,00"
 
 def plotly_dark(fig, height=None, margin_b=40):
-    u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.08)",
+    u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.18)",
              font=dict(color="#c8d8e8",family="Space Grotesk"),coloraxis_showscale=False,
              margin=dict(t=24,b=margin_b,l=8,r=12),
              xaxis=dict(tickfont=dict(color="#d0dce8",size=12,family="Space Grotesk"),
@@ -462,7 +462,7 @@ with tab_dash:
         fig.update_layout(
             # ── FUNDO MAIS CLARO no gráfico
             paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(255,255,255,0.08)",
+            plot_bgcolor="rgba(255,255,255,0.18)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
             height=h, margin=dict(t=60, b=90, l=12, r=70),
             title=dict(
@@ -557,7 +557,7 @@ with tab_dash:
         )
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(255,255,255,0.07)",
+            plot_bgcolor="rgba(255,255,255,0.16)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
             coloraxis_showscale=False,
             height=height, margin=dict(t=10,b=30,l=6,r=110),
@@ -741,7 +741,7 @@ with tab_reent:
             ))
             fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.08)",
+                plot_bgcolor="rgba(255,255,255,0.18)",
                 font=dict(color="#c8d8e8", family="Space Grotesk"),
                 height=max(440,min(n*36,680)),
                 margin=dict(t=40,b=90,l=12,r=40),
@@ -808,7 +808,7 @@ with tab_reent:
             )
             fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.07)",
+                plot_bgcolor="rgba(255,255,255,0.16)",
                 font=dict(color="#c8d8e8", family="Space Grotesk"),
                 coloraxis_showscale=False,
                 height=height, margin=dict(t=10,b=30,l=6,r=80),
