@@ -140,15 +140,15 @@ def fmt_brl(v):
         return "R$ 0,00"
 
 def plotly_dark(fig, height=None, margin_b=40):
-    u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.015)",
-             font=dict(color="#94a3b8",family="Space Grotesk"),coloraxis_showscale=False,
+    u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.08)",
+             font=dict(color="#c8d8e8",family="Space Grotesk"),coloraxis_showscale=False,
              margin=dict(t=24,b=margin_b,l=8,r=12),
-             xaxis=dict(tickfont=dict(color="#64748b",size=10),
-                        gridcolor="rgba(255,255,255,0.04)",linecolor="rgba(255,255,255,0.06)"),
-             yaxis=dict(tickfont=dict(color="#64748b",size=10),
-                        gridcolor="rgba(255,255,255,0.04)",linecolor="rgba(255,255,255,0.06)"),
+             xaxis=dict(tickfont=dict(color="#d0dce8",size=12,family="Space Grotesk"),
+                        gridcolor="rgba(255,255,255,0.10)",linecolor="rgba(255,255,255,0.12)"),
+             yaxis=dict(tickfont=dict(color="#94a3b8",size=11),
+                        gridcolor="rgba(255,255,255,0.10)",linecolor="rgba(255,255,255,0.12)"),
              legend=dict(bgcolor="rgba(8,15,35,0.9)",bordercolor="rgba(56,189,248,0.15)",
-                         borderwidth=1,font=dict(color="#94a3b8",size=11)))
+                         borderwidth=1,font=dict(color="#c8d8e8",size=12)))
     if height: u["height"] = height
     fig.update_layout(**u)
     return fig
@@ -160,9 +160,7 @@ MIXED = ["#0ea5e9","#22c55e","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","
 
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 SHEET_ID       = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
-# Aba 1: "8456- DEVOLUCAO 2026"
 GSHEETS_URL    = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&id={SHEET_ID}"
-# Aba 2: "8261 - REENTREGAS 2026"
 REENTREGAS_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261+-+REENTREGAS+2026"
 
 @st.cache_data(ttl=60)
@@ -205,12 +203,6 @@ def get_col(df, names):
             return n
     return None
 
-# Mapeamento exato da aba "8456- DEVOLUCAO 2026"
-# Colunas reais: CODFILIAL, DTENT, NOTA_DEVOLUCAO, CODFUNCLANC, DTSAIDA,
-# NOTA_VENDA, NUMCAR, PLACA, DESTINO, DTENTREGA, VLTOTAL, CODDEVOL, OBS,
-# MOTIVO, NUMTRANSENT, ..., CODCLI, CLIENTE, NOME_CIDADE, ..., MOTORISTA,
-# CODRCA, NOMERCA, CODSUPERVISOR, SUPERVISOR, NOMEFUNC, ..., TIPO_MERCADO
-
 VALOR_COL     = get_col(df_raw, ["VLTOTAL","VLT","VL_TOTAL","VALOR_LIQUIDO","VALOR","TOTAL"]) or "VLTOTAL"
 COL_PLACA     = get_col(df_raw, ["PLACA"])
 COL_MOTIVO    = get_col(df_raw, ["MOTIVO","MOTIVO_DEVOLUCAO","MOTIVO_DEV"])
@@ -227,8 +219,6 @@ COL_SUPERVISOR= get_col(df_raw, ["SUPERVISOR","AM","GERENTE"])
 COL_PRACA     = get_col(df_raw, ["PRACA"])
 COL_TIPO_MERC = get_col(df_raw, ["TIPO_MERCADO","CANAL","SEGMENTO"])
 COL_DTSAIDA   = get_col(df_raw, ["DTSAIDA","DATA_DEVOLUCAO","DATA","DT_DEVOLUCAO"])
-# DTENT = coluna usada como filtro principal (data de entrada/registro)
-# DTENTREGA = data de entrega ao cliente
 COL_DTENTREGA = get_col(df_raw, ["DTENT","DTENTREGA","DATA_ENTREGA","DT_ENTREGA"])
 
 if VALOR_COL not in df_raw.columns:
@@ -249,14 +239,6 @@ else:
     df_raw["_DTENTREGA_DT"] = pd.NaT
 
 # ── Normaliza colunas reentregas ──────────────────────────────────────────────
-# Colunas reais da aba "8261 - REENTREGAS 2026":
-# NUMNOTA, DTFAT, SERIE, ESPECIE, DTSAIDA, VLTOTGER, TOTPESO, NUMTRANSVENDA,
-# NUMCARANTERIOR, PLACAANT, COD MOT ANTERIOR, NOME MOT ANTERIOR,
-# COD AJU ANTERIOR, NOME AJU ANTERIOR, NUMCARATUAL, PLACAATUAL,
-# COD MOT ATUAL, NOME MOT ATUAL, COD AJU ATUAL, NOME AJU ATUAL,
-# DTRANSF, CODMOTIVO, MOTIVOTRANSF, CODCLI, CLIENTE, BAIRROENT,
-# CODPRACA, PRACA, ROTA, NUMPED, CODUSUR, NOME
-
 REENT_COLS_MAP = {
     "NUMNOTA":           ["NUMNOTA"],
     "DTFAT":             ["DTFAT"],
@@ -449,6 +431,7 @@ with tab_dash:
 
     st.markdown("---")
 
+    # ── FUNÇÃO COMBO CHART ATUALIZADA ─────────────────────────────────────────
     def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None):
         n = len(df_data)
         if bar_colors is None:
@@ -458,35 +441,65 @@ with tab_dash:
             x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
             marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
             text=[fmt_brl(v) for v in df_data[val_col]],
-            textposition="outside", textfont=dict(size=12,color="#ffffff",family="DM Mono"),
+            # ── FONTE MAIOR E NEGRITO nos rótulos das barras
+            textposition="outside",
+            textfont=dict(size=14, color="#ffffff", family="DM Mono"),
             hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
         ))
         fig.add_trace(go.Scatter(
             x=df_data[x_col], y=df_data[qtd_col], name="Qtd.",
-            mode="lines+markers", line=dict(color="#f59e0b",width=2.5),
-            marker=dict(color="#fde68a",size=10,line=dict(color="#f59e0b",width=2),
-                        symbol="circle"),
+            # ── mode com +text para exibir o valor acima do ponto
+            mode="lines+markers+text",
+            text=[f"<b>{v}</b>" for v in df_data[qtd_col]],
+            textposition="top center",
+            textfont=dict(color="#fde68a", size=13, family="DM Mono"),
+            line=dict(color="#f59e0b", width=2.5),
+            marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
             hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
         ))
         h = max(440, min(n*36, 680))
-        # Expande o eixo Y2 para que a linha fique bem abaixo do topo das barras
         max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
         fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.015)",
-            font=dict(color="#94a3b8",family="Space Grotesk"),
-            height=h, margin=dict(t=60,b=90,l=12,r=70),
-            title=dict(text=f"<b>{periodo}</b>",font=dict(size=16,color="#ffffff"),x=0.5,xanchor="center"),
+            # ── FUNDO MAIS CLARO no gráfico
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(255,255,255,0.08)",
+            font=dict(color="#c8d8e8", family="Space Grotesk"),
+            height=h, margin=dict(t=60, b=90, l=12, r=70),
+            title=dict(
+                text=f"<b>{periodo}</b>",
+                font=dict(size=17, color="#ffffff"),
+                x=0.5, xanchor="center"
+            ),
             bargap=0.28,
-            xaxis=dict(tickfont=dict(color="#b0bec5",size=11,family="DM Mono"),
-                       gridcolor="rgba(255,255,255,0.04)",linecolor="rgba(255,255,255,0.06)",tickangle=-38),
-            yaxis=dict(title=dict(text="Valor (R$)",font=dict(color="#64748b",size=11)),
-                       tickfont=dict(color="#64748b",size=10),
-                       gridcolor="rgba(255,255,255,0.05)",tickformat=",.0f",side="left"),
-            yaxis2=dict(title=dict(text="Quantidade",font=dict(color="#f59e0b",size=11)),
-                        tickfont=dict(color="#f59e0b",size=10),overlaying="y",side="right",showgrid=False,
-                        range=[0, max_qtd * 3.5]),
-            legend=dict(bgcolor="rgba(8,15,35,0.92)",bordercolor="rgba(56,189,248,0.2)",borderwidth=1,
-                        font=dict(color="#94a3b8",size=11),orientation="h",x=1.0,xanchor="right",y=-0.22),
+            # ── EIXO X: fonte maior e grid mais visível
+            xaxis=dict(
+                tickfont=dict(color="#d0dce8", size=12, family="DM Mono"),
+                gridcolor="rgba(255,255,255,0.10)",
+                linecolor="rgba(255,255,255,0.14)",
+                tickangle=-38
+            ),
+            # ── EIXO Y1: fonte maior e grid mais visível
+            yaxis=dict(
+                title=dict(text="Valor (R$)", font=dict(color="#94a3b8", size=12)),
+                tickfont=dict(color="#94a3b8", size=11),
+                gridcolor="rgba(255,255,255,0.10)",
+                tickformat=",.0f", side="left"
+            ),
+            # ── EIXO Y2: range reduzido para elevar a linha de quantidade
+            yaxis2=dict(
+                title=dict(text="Quantidade", font=dict(color="#f59e0b", size=12)),
+                tickfont=dict(color="#f59e0b", size=11),
+                overlaying="y", side="right", showgrid=False,
+                # range menor = linha fica mais alta na área do gráfico
+                range=[0, max_qtd * 2.0],
+            ),
+            legend=dict(
+                bgcolor="rgba(8,15,35,0.92)",
+                bordercolor="rgba(56,189,248,0.2)",
+                borderwidth=1,
+                font=dict(color="#c8d8e8", size=12),
+                orientation="h", x=1.0, xanchor="right", y=-0.22
+            ),
         )
         return fig
 
@@ -537,15 +550,26 @@ with tab_dash:
                      color=x_col,color_continuous_scale=color_scale,
                      text=[fmt_brl(v) for v in df_data[x_col]],
                      labels={y_col:"",x_col:"R$"})
-        fig.update_traces(textposition="outside",textfont=dict(size=11,color="#e2e8f0",family="DM Mono"),
-                          cliponaxis=False,marker_line_width=0)
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",
-                          font=dict(color="#94a3b8",family="Space Grotesk"),coloraxis_showscale=False,
-                          height=height,margin=dict(t=10,b=30,l=6,r=110),
-                          xaxis=dict(tickfont=dict(color="#475569",size=10),
-                                     gridcolor="rgba(255,255,255,0.04)",tickformat=",.0f",zeroline=False),
-                          yaxis=dict(tickfont=dict(color="#cbd5e1",size=11,family="Space Grotesk"),
-                                     gridcolor="rgba(0,0,0,0)",automargin=True))
+        fig.update_traces(
+            textposition="outside",
+            textfont=dict(size=12, color="#e2e8f0", family="DM Mono"),
+            cliponaxis=False, marker_line_width=0
+        )
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(255,255,255,0.07)",
+            font=dict(color="#c8d8e8", family="Space Grotesk"),
+            coloraxis_showscale=False,
+            height=height, margin=dict(t=10,b=30,l=6,r=110),
+            xaxis=dict(
+                tickfont=dict(color="#94a3b8", size=11),
+                gridcolor="rgba(255,255,255,0.09)", tickformat=",.0f", zeroline=False
+            ),
+            yaxis=dict(
+                tickfont=dict(color="#dde6f0", size=12, family="Space Grotesk"),
+                gridcolor="rgba(0,0,0,0)", automargin=True
+            )
+        )
         return fig
 
     c1,c2,c3 = st.columns(3,gap="medium")
@@ -591,7 +615,7 @@ with tab_dash:
                      .reset_index().sort_values("Valor",ascending=False).head(10))
             if not df_dd.empty:
                 fig_dd = px.pie(df_dd,names=COL_DESTINO,values="Valor",color_discrete_sequence=MIXED,hole=0.52)
-                fig_dd.update_traces(textfont=dict(size=12,color="#e2e8f0"),
+                fig_dd.update_traces(textfont=dict(size=13,color="#ffffff"),
                     marker=dict(line=dict(color="rgba(4,9,20,0.8)",width=2)),pull=[0.05]+[0]*(len(df_dd)-1))
                 st.plotly_chart(plotly_dark(fig_dd,height=360),use_container_width=True)
     with c5:
@@ -604,7 +628,7 @@ with tab_dash:
             rows_h=""
             for i,row in df_rk.rename(columns={COL_MOTIVO:"Motivo"}).iterrows():
                 bg="rgba(14,165,233,0.06)" if i%2==0 else "rgba(0,0,0,0)"
-                rows_h+=f'<tr style="background:{bg};"><td style="padding:10px 14px;color:#cbd5e1;font-size:0.84rem;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Motivo"]}</td><td style="padding:10px 14px;color:#7dd3fc;text-align:center;font-size:0.84rem;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Qtd"]}</td><td style="padding:10px 14px;color:#4ade80;font-size:0.84rem;font-family:monospace;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Valor Total"]}</td><td style="padding:10px 14px;color:#f59e0b;text-align:center;font-size:0.84rem;border-bottom:1px solid rgba(56,189,248,0.07);">{row["% Total"]}</td></tr>'
+                rows_h+=f'<tr style="background:{bg};"><td style="padding:10px 14px;color:#dde6f0;font-size:0.84rem;font-weight:600;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Motivo"]}</td><td style="padding:10px 14px;color:#7dd3fc;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Qtd"]}</td><td style="padding:10px 14px;color:#4ade80;font-size:0.84rem;font-weight:600;font-family:monospace;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Valor Total"]}</td><td style="padding:10px 14px;color:#f59e0b;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.07);">{row["% Total"]}</td></tr>'
             st.markdown(f'<div style="background:rgba(6,13,31,0.92);border:1px solid rgba(56,189,248,0.15);border-radius:14px;overflow:hidden;max-height:360px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:rgba(12,26,58,0.98);"><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-align:left;text-transform:uppercase;border-bottom:1px solid rgba(56,189,248,0.2);">Motivo</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(56,189,248,0.2);">Qtd</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.2);">Valor Total</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(56,189,248,0.2);">%</th></tr></thead><tbody>{rows_h}</tbody></table></div>', unsafe_allow_html=True)
 
 
@@ -701,6 +725,7 @@ with tab_reent:
 
         st.markdown("---")
 
+        # ── FUNÇÃO COMBO REENTREGAS ATUALIZADA ───────────────────────────────
         def make_combo_reent(df_data, x_col, y_col, qtd_col, bar_colors=None):
             n = len(df_data)
             if bar_colors is None:
@@ -709,21 +734,35 @@ with tab_reent:
             fig.add_trace(go.Bar(
                 x=df_data[x_col], y=df_data[y_col], name="Qtd.",
                 marker=dict(color=bar_colors,opacity=0.88,line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
-                text=[str(v) for v in df_data[y_col]],
-                textposition="outside",textfont=dict(size=12,color="#ffffff",family="DM Mono"),
-                hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>",yaxis="y1",
+                text=[f"<b>{v}</b>" for v in df_data[y_col]],
+                textposition="outside",
+                textfont=dict(size=14, color="#ffffff", family="DM Mono"),
+                hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y1",
             ))
             fig.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.015)",
-                font=dict(color="#94a3b8",family="Space Grotesk"),
-                height=max(440,min(n*36,680)),margin=dict(t=40,b=90,l=12,r=40),bargap=0.28,
-                xaxis=dict(tickfont=dict(color="#b0bec5",size=11,family="DM Mono"),
-                           gridcolor="rgba(255,255,255,0.04)",tickangle=-38),
-                yaxis=dict(title=dict(text="Quantidade",font=dict(color="#64748b",size=11)),
-                           tickfont=dict(color="#64748b",size=10),gridcolor="rgba(255,255,255,0.05)"),
-                legend=dict(bgcolor="rgba(8,15,35,0.92)",bordercolor="rgba(56,189,248,0.2)",
-                            borderwidth=1,font=dict(color="#94a3b8",size=11),
-                            orientation="h",x=1.0,xanchor="right",y=-0.22),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(255,255,255,0.08)",
+                font=dict(color="#c8d8e8", family="Space Grotesk"),
+                height=max(440,min(n*36,680)),
+                margin=dict(t=40,b=90,l=12,r=40),
+                bargap=0.28,
+                xaxis=dict(
+                    tickfont=dict(color="#d0dce8", size=12, family="DM Mono"),
+                    gridcolor="rgba(255,255,255,0.10)",
+                    tickangle=-38
+                ),
+                yaxis=dict(
+                    title=dict(text="Quantidade", font=dict(color="#94a3b8", size=12)),
+                    tickfont=dict(color="#94a3b8", size=11),
+                    gridcolor="rgba(255,255,255,0.10)"
+                ),
+                legend=dict(
+                    bgcolor="rgba(8,15,35,0.92)",
+                    bordercolor="rgba(56,189,248,0.2)",
+                    borderwidth=1,
+                    font=dict(color="#c8d8e8", size=12),
+                    orientation="h", x=1.0, xanchor="right", y=-0.22
+                ),
             )
             return fig
 
@@ -760,17 +799,28 @@ with tab_reent:
         def make_hbar_reent(df_data, x_col, y_col, color_scale, height=420):
             fig=px.bar(df_data,x=x_col,y=y_col,orientation="h",
                        color=x_col,color_continuous_scale=color_scale,
-                       text=[str(v) for v in df_data[x_col]],
+                       text=[f"<b>{v}</b>" for v in df_data[x_col]],
                        labels={y_col:"",x_col:"Qtd"})
-            fig.update_traces(textposition="outside",textfont=dict(size=11,color="#e2e8f0",family="DM Mono"),
-                              cliponaxis=False,marker_line_width=0)
-            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",
-                              font=dict(color="#94a3b8",family="Space Grotesk"),coloraxis_showscale=False,
-                              height=height,margin=dict(t=10,b=30,l=6,r=80),
-                              xaxis=dict(tickfont=dict(color="#475569",size=10),
-                                         gridcolor="rgba(255,255,255,0.04)",zeroline=False),
-                              yaxis=dict(tickfont=dict(color="#cbd5e1",size=11,family="Space Grotesk"),
-                                         gridcolor="rgba(0,0,0,0)",automargin=True))
+            fig.update_traces(
+                textposition="outside",
+                textfont=dict(size=12, color="#e2e8f0", family="DM Mono"),
+                cliponaxis=False, marker_line_width=0
+            )
+            fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(255,255,255,0.07)",
+                font=dict(color="#c8d8e8", family="Space Grotesk"),
+                coloraxis_showscale=False,
+                height=height, margin=dict(t=10,b=30,l=6,r=80),
+                xaxis=dict(
+                    tickfont=dict(color="#94a3b8", size=11),
+                    gridcolor="rgba(255,255,255,0.09)", zeroline=False
+                ),
+                yaxis=dict(
+                    tickfont=dict(color="#dde6f0", size=12, family="Space Grotesk"),
+                    gridcolor="rgba(0,0,0,0)", automargin=True
+                )
+            )
             return fig
 
         cr1,cr2,cr3=st.columns(3,gap="medium")
@@ -810,7 +860,7 @@ with tab_reent:
                 if not df_praca_r.empty:
                     fig_pr=px.pie(df_praca_r,names=praca_r_col,values="Qtd",
                                   color_discrete_sequence=MIXED,hole=0.52)
-                    fig_pr.update_traces(textfont=dict(size=12,color="#e2e8f0"),
+                    fig_pr.update_traces(textfont=dict(size=13,color="#ffffff"),
                         marker=dict(line=dict(color="rgba(4,9,20,0.8)",width=2)),pull=[0.05]+[0]*(len(df_praca_r)-1))
                     st.plotly_chart(plotly_dark(fig_pr,height=360),use_container_width=True)
         with cr5:
@@ -823,7 +873,7 @@ with tab_reent:
                 rows_hr=""
                 for i,row in df_rkr.iterrows():
                     bg="rgba(74,222,128,0.05)" if i%2==0 else "rgba(0,0,0,0)"
-                    rows_hr+=f'<tr style="background:{bg};"><td style="padding:10px 14px;color:#cbd5e1;font-size:0.84rem;border-bottom:1px solid rgba(74,222,128,0.07);">{row[motivo_r_col2]}</td><td style="padding:10px 14px;color:#4ade80;text-align:center;font-size:0.84rem;border-bottom:1px solid rgba(74,222,128,0.07);">{row["Qtd"]}</td><td style="padding:10px 14px;color:#f59e0b;text-align:center;font-size:0.84rem;border-bottom:1px solid rgba(74,222,128,0.07);">{row["%"]}</td></tr>'
+                    rows_hr+=f'<tr style="background:{bg};"><td style="padding:10px 14px;color:#dde6f0;font-size:0.84rem;font-weight:600;border-bottom:1px solid rgba(74,222,128,0.07);">{row[motivo_r_col2]}</td><td style="padding:10px 14px;color:#4ade80;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(74,222,128,0.07);">{row["Qtd"]}</td><td style="padding:10px 14px;color:#f59e0b;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(74,222,128,0.07);">{row["%"]}</td></tr>'
                 st.markdown(f'<div style="background:rgba(6,13,31,0.92);border:1px solid rgba(74,222,128,0.15);border-radius:14px;overflow:hidden;max-height:360px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:rgba(12,26,58,0.98);"><th style="padding:12px 14px;color:#4ade80;font-size:0.75rem;font-weight:700;text-align:left;text-transform:uppercase;border-bottom:1px solid rgba(74,222,128,0.2);">Motivo</th><th style="padding:12px 14px;color:#4ade80;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(74,222,128,0.2);">Qtd</th><th style="padding:12px 14px;color:#4ade80;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(74,222,128,0.2);">%</th></tr></thead><tbody>{rows_hr}</tbody></table></div>',unsafe_allow_html=True)
 
 
@@ -862,7 +912,6 @@ with tab_reent_det:
         with ds3: s_ped_r=st.text_input("📦 Pedido (NUMPED)",placeholder="Nº",key="det_ped")
         with ds4: s_placa_r=st.text_input("🚚 Placa",placeholder="PLACAANT ou PLACAATUAL",key="det_placa")
 
-        # Colunas exatas da aba reentregas para exibição
         REENT_DISPLAY=[
             ("DATATRANSF","DTRANSF"),("NUMPED","NUMPED"),("NUMNOTA","NUMNOTA"),
             ("DTFAT","DTFAT"),("DTSAIDA","DTSAIDA"),("CLIENTE","CLIENTE"),("CODCLI","CODCLI"),
@@ -896,7 +945,7 @@ with tab_reent_det:
             rws=""
             for idx,(_,row) in enumerate(df_det.head(500).iterrows()):
                 bg="rgba(74,222,128,0.04)" if idx%2==0 else "rgba(0,0,0,0)"
-                cells="".join([f'<td style="padding:9px 13px;color:#cbd5e1;font-size:0.83rem;border-bottom:1px solid rgba(74,222,128,0.05);white-space:nowrap;">{val}</td>' for val in row.values])
+                cells="".join([f'<td style="padding:9px 13px;color:#dde6f0;font-size:0.83rem;font-weight:500;border-bottom:1px solid rgba(74,222,128,0.05);white-space:nowrap;">{val}</td>' for val in row.values])
                 rws+=f'<tr style="background:{bg};">{cells}</tr>'
             st.markdown(f'<div style="background:rgba(5,11,28,0.94);border:1px solid rgba(74,222,128,0.16);border-radius:14px;overflow:hidden;max-height:560px;overflow-y:auto;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:1100px;"><thead><tr>{heads}</tr></thead><tbody>{rws}</tbody></table></div>',unsafe_allow_html=True)
             csv_det=df_det.to_csv(index=False,sep=";",decimal=",").encode("utf-8-sig")
@@ -916,7 +965,6 @@ with tab_campos:
     with sr3: s_ped=st.text_input("📦 CODCLI",placeholder="Código",key="sc_ped")
     with sr4: s_placa2=st.text_input("🚚 PLACA",placeholder="Ex: NPB1J08",key="sc_placa")
 
-    # Colunas exatas da planilha de devoluções
     CAMPOS=[
         (COL_DTENTREGA,  "DTENT"),
         (COL_DTSAIDA,    "DTSAIDA"),
@@ -956,7 +1004,7 @@ with tab_campos:
         rows_hc=""
         for idx,(_,row) in enumerate(df_campos.head(500).iterrows()):
             bg="rgba(14,165,233,0.05)" if idx%2==0 else "rgba(0,0,0,0)"
-            cells="".join([f'<td style="padding:9px 13px;color:#cbd5e1;font-size:0.83rem;border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>' for val in row.values])
+            cells="".join([f'<td style="padding:9px 13px;color:#dde6f0;font-size:0.83rem;font-weight:500;border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>' for val in row.values])
             rows_hc+=f'<tr style="background:{bg};">{cells}</tr>'
         st.markdown(f'<div style="background:rgba(5,11,28,0.94);border:1px solid rgba(56,189,248,0.16);border-radius:14px;overflow:hidden;max-height:560px;overflow-y:auto;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr>{heads_c}</tr></thead><tbody>{rows_hc}</tbody></table></div>',unsafe_allow_html=True)
         if len(df_campos)>500: st.caption(f"⚠️ Exibindo primeiros 500 de {len(df_campos)}.")
@@ -987,7 +1035,7 @@ with tab_dados:
     rows_hd=""
     for idx,(_,row) in enumerate(disp.head(500).iterrows()):
         bg="rgba(14,165,233,0.05)" if idx%2==0 else "rgba(0,0,0,0)"
-        cells="".join([f'<td style="padding:9px 13px;color:#cbd5e1;font-size:0.83rem;border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>' for val in row.values])
+        cells="".join([f'<td style="padding:9px 13px;color:#dde6f0;font-size:0.83rem;font-weight:500;border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>' for val in row.values])
         rows_hd+=f'<tr style="background:{bg};">{cells}</tr>'
     st.markdown(f'<div style="background:rgba(5,11,28,0.94);border:1px solid rgba(56,189,248,0.16);border-radius:14px;overflow:hidden;max-height:520px;overflow-y:auto;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr>{heads_d}</tr></thead><tbody>{rows_hd}</tbody></table></div>',unsafe_allow_html=True)
     st.caption(f"Exibindo {len(disp.head(500)):,} de {len(df):,} registros".replace(",","."))
