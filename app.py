@@ -471,26 +471,28 @@ with tab_dash:
                 x=0.5, xanchor="center"
             ),
             bargap=0.28,
-            # ── EIXO X: fonte maior e grid mais visível
+            # ── EIXO X: sem grid
             xaxis=dict(
                 tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
-                gridcolor="rgba(255,255,255,0.10)",
-                linecolor="rgba(255,255,255,0.14)",
+                gridcolor="rgba(0,0,0,0)",
+                linecolor="rgba(0,0,0,0)",
+                zeroline=False,
                 tickangle=-38
             ),
-            # ── EIXO Y1: fonte maior e grid mais visível
+            # ── EIXO Y1: sem labels, sem grid, sem título
             yaxis=dict(
-                title=dict(text="Valor (R$)", font=dict(color="#94a3b8", size=14)),
-                tickfont=dict(color="#94a3b8", size=13),
-                gridcolor="rgba(255,255,255,0.10)",
-                tickformat=",.0f", side="left"
+                title=dict(text=""),
+                showticklabels=False,
+                gridcolor="rgba(0,0,0,0)",
+                zeroline=False,
+                side="left"
             ),
-            # ── EIXO Y2: range reduzido para elevar a linha de quantidade
+            # ── EIXO Y2: sem labels, sem grid
             yaxis2=dict(
-                title=dict(text="Quantidade", font=dict(color="#f59e0b", size=14)),
-                tickfont=dict(color="#f59e0b", size=13),
+                title=dict(text=""),
+                showticklabels=False,
                 overlaying="y", side="right", showgrid=False,
-                # range menor = linha fica mais alta na área do gráfico
+                zeroline=False,
                 range=[0, max_qtd * 2.0],
             ),
             legend=dict(
@@ -748,13 +750,16 @@ with tab_reent:
                 bargap=0.28,
                 xaxis=dict(
                     tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
-                    gridcolor="rgba(255,255,255,0.10)",
+                    gridcolor="rgba(0,0,0,0)",
+                    linecolor="rgba(0,0,0,0)",
+                    zeroline=False,
                     tickangle=-38
                 ),
                 yaxis=dict(
-                    title=dict(text="Quantidade", font=dict(color="#94a3b8", size=14)),
-                    tickfont=dict(color="#94a3b8", size=13),
-                    gridcolor="rgba(255,255,255,0.10)"
+                    title=dict(text=""),
+                    showticklabels=False,
+                    gridcolor="rgba(0,0,0,0)",
+                    zeroline=False,
                 ),
                 legend=dict(
                     bgcolor="rgba(8,15,35,0.92)",
