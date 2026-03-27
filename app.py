@@ -140,12 +140,12 @@ def fmt_brl(v):
         return "R$ 0,00"
 
 def plotly_dark(fig, height=None, margin_b=40):
-    u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.18)",
+    u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.32)",
              font=dict(color="#c8d8e8",family="Space Grotesk"),coloraxis_showscale=False,
              margin=dict(t=24,b=margin_b,l=8,r=12),
-             xaxis=dict(tickfont=dict(color="#d0dce8",size=12,family="Space Grotesk"),
+             xaxis=dict(tickfont=dict(color="#d0dce8",size=14,family="Space Grotesk"),
                         gridcolor="rgba(255,255,255,0.10)",linecolor="rgba(255,255,255,0.12)"),
-             yaxis=dict(tickfont=dict(color="#94a3b8",size=11),
+             yaxis=dict(tickfont=dict(color="#94a3b8",size=13),
                         gridcolor="rgba(255,255,255,0.10)",linecolor="rgba(255,255,255,0.12)"),
              legend=dict(bgcolor="rgba(8,15,35,0.9)",bordercolor="rgba(56,189,248,0.15)",
                          borderwidth=1,font=dict(color="#c8d8e8",size=12)))
@@ -443,7 +443,7 @@ with tab_dash:
             text=[fmt_brl(v) for v in df_data[val_col]],
             # ── FONTE MAIOR E NEGRITO nos rótulos das barras
             textposition="outside",
-            textfont=dict(size=14, color="#ffffff", family="DM Mono"),
+            textfont=dict(size=16, color="#ffffff", family="DM Mono"),
             hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
         ))
         fig.add_trace(go.Scatter(
@@ -452,7 +452,7 @@ with tab_dash:
             mode="lines+markers+text",
             text=[f"<b>{v}</b>" for v in df_data[qtd_col]],
             textposition="top center",
-            textfont=dict(color="#fde68a", size=13, family="DM Mono"),
+            textfont=dict(color="#fde68a", size=15, family="DM Mono"),
             line=dict(color="#f59e0b", width=2.5),
             marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
             hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
@@ -462,7 +462,7 @@ with tab_dash:
         fig.update_layout(
             # ── FUNDO MAIS CLARO no gráfico
             paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(255,255,255,0.18)",
+            plot_bgcolor="rgba(255,255,255,0.32)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
             height=h, margin=dict(t=60, b=90, l=12, r=70),
             title=dict(
@@ -473,22 +473,22 @@ with tab_dash:
             bargap=0.28,
             # ── EIXO X: fonte maior e grid mais visível
             xaxis=dict(
-                tickfont=dict(color="#d0dce8", size=12, family="DM Mono"),
+                tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
                 gridcolor="rgba(255,255,255,0.10)",
                 linecolor="rgba(255,255,255,0.14)",
                 tickangle=-38
             ),
             # ── EIXO Y1: fonte maior e grid mais visível
             yaxis=dict(
-                title=dict(text="Valor (R$)", font=dict(color="#94a3b8", size=12)),
-                tickfont=dict(color="#94a3b8", size=11),
+                title=dict(text="Valor (R$)", font=dict(color="#94a3b8", size=14)),
+                tickfont=dict(color="#94a3b8", size=13),
                 gridcolor="rgba(255,255,255,0.10)",
                 tickformat=",.0f", side="left"
             ),
             # ── EIXO Y2: range reduzido para elevar a linha de quantidade
             yaxis2=dict(
-                title=dict(text="Quantidade", font=dict(color="#f59e0b", size=12)),
-                tickfont=dict(color="#f59e0b", size=11),
+                title=dict(text="Quantidade", font=dict(color="#f59e0b", size=14)),
+                tickfont=dict(color="#f59e0b", size=13),
                 overlaying="y", side="right", showgrid=False,
                 # range menor = linha fica mais alta na área do gráfico
                 range=[0, max_qtd * 2.0],
@@ -497,7 +497,7 @@ with tab_dash:
                 bgcolor="rgba(8,15,35,0.92)",
                 bordercolor="rgba(56,189,248,0.2)",
                 borderwidth=1,
-                font=dict(color="#c8d8e8", size=12),
+                font=dict(color="#c8d8e8", size=14),
                 orientation="h", x=1.0, xanchor="right", y=-0.22
             ),
         )
@@ -552,21 +552,21 @@ with tab_dash:
                      labels={y_col:"",x_col:"R$"})
         fig.update_traces(
             textposition="outside",
-            textfont=dict(size=12, color="#e2e8f0", family="DM Mono"),
+            textfont=dict(size=14, color="#e2e8f0", family="DM Mono"),
             cliponaxis=False, marker_line_width=0
         )
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(255,255,255,0.16)",
+            plot_bgcolor="rgba(255,255,255,0.30)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
             coloraxis_showscale=False,
             height=height, margin=dict(t=10,b=30,l=6,r=110),
             xaxis=dict(
-                tickfont=dict(color="#94a3b8", size=11),
+                tickfont=dict(color="#94a3b8", size=13),
                 gridcolor="rgba(255,255,255,0.09)", tickformat=",.0f", zeroline=False
             ),
             yaxis=dict(
-                tickfont=dict(color="#dde6f0", size=12, family="Space Grotesk"),
+                tickfont=dict(color="#dde6f0", size=14, family="Space Grotesk"),
                 gridcolor="rgba(0,0,0,0)", automargin=True
             )
         )
@@ -736,31 +736,31 @@ with tab_reent:
                 marker=dict(color=bar_colors,opacity=0.88,line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
                 text=[f"<b>{v}</b>" for v in df_data[y_col]],
                 textposition="outside",
-                textfont=dict(size=14, color="#ffffff", family="DM Mono"),
+                textfont=dict(size=16, color="#ffffff", family="DM Mono"),
                 hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y1",
             ))
             fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.18)",
+                plot_bgcolor="rgba(255,255,255,0.32)",
                 font=dict(color="#c8d8e8", family="Space Grotesk"),
                 height=max(440,min(n*36,680)),
                 margin=dict(t=40,b=90,l=12,r=40),
                 bargap=0.28,
                 xaxis=dict(
-                    tickfont=dict(color="#d0dce8", size=12, family="DM Mono"),
+                    tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
                     gridcolor="rgba(255,255,255,0.10)",
                     tickangle=-38
                 ),
                 yaxis=dict(
-                    title=dict(text="Quantidade", font=dict(color="#94a3b8", size=12)),
-                    tickfont=dict(color="#94a3b8", size=11),
+                    title=dict(text="Quantidade", font=dict(color="#94a3b8", size=14)),
+                    tickfont=dict(color="#94a3b8", size=13),
                     gridcolor="rgba(255,255,255,0.10)"
                 ),
                 legend=dict(
                     bgcolor="rgba(8,15,35,0.92)",
                     bordercolor="rgba(56,189,248,0.2)",
                     borderwidth=1,
-                    font=dict(color="#c8d8e8", size=12),
+                    font=dict(color="#c8d8e8", size=14),
                     orientation="h", x=1.0, xanchor="right", y=-0.22
                 ),
             )
@@ -803,21 +803,21 @@ with tab_reent:
                        labels={y_col:"",x_col:"Qtd"})
             fig.update_traces(
                 textposition="outside",
-                textfont=dict(size=12, color="#e2e8f0", family="DM Mono"),
+                textfont=dict(size=14, color="#e2e8f0", family="DM Mono"),
                 cliponaxis=False, marker_line_width=0
             )
             fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.16)",
+                plot_bgcolor="rgba(255,255,255,0.30)",
                 font=dict(color="#c8d8e8", family="Space Grotesk"),
                 coloraxis_showscale=False,
                 height=height, margin=dict(t=10,b=30,l=6,r=80),
                 xaxis=dict(
-                    tickfont=dict(color="#94a3b8", size=11),
+                    tickfont=dict(color="#94a3b8", size=13),
                     gridcolor="rgba(255,255,255,0.09)", zeroline=False
                 ),
                 yaxis=dict(
-                    tickfont=dict(color="#dde6f0", size=12, family="Space Grotesk"),
+                    tickfont=dict(color="#dde6f0", size=14, family="Space Grotesk"),
                     gridcolor="rgba(0,0,0,0)", automargin=True
                 )
             )
