@@ -458,33 +458,33 @@ with tab_dash:
             x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
             marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
             text=[fmt_brl(v) for v in df_data[val_col]],
-            textposition="outside", textfont=dict(size=12,color="#ffffff",family="DM Mono"),
+            textposition="outside", textfont=dict(size=12,color="#1e293b",family="DM Mono"),
             hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
         ))
         fig.add_trace(go.Scatter(
             x=df_data[x_col], y=df_data[qtd_col], name="Qtd.",
             mode="lines+markers+text", line=dict(color="#f59e0b",width=2.5),
-            marker=dict(color="#fde68a",size=10,line=dict(color="#f59e0b",width=2)),
+            marker=dict(color="#f59e0b",size=10,line=dict(color="#92400e",width=2)),
             text=df_data[qtd_col].astype(str), textposition="top center",
-            textfont=dict(size=12,color="#fde68a",family="DM Mono"),
+            textfont=dict(size=12,color="#92400e",family="DM Mono"),
             hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
         ))
         h = max(440, min(n*36, 680))
         fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.015)",
-            font=dict(color="#94a3b8",family="Space Grotesk"),
+            paper_bgcolor="#ffffff", plot_bgcolor="#f8fafc",
+            font=dict(color="#1e293b",family="Space Grotesk"),
             height=h, margin=dict(t=60,b=90,l=12,r=70),
-            title=dict(text=f"<b>{periodo}</b>",font=dict(size=16,color="#ffffff"),x=0.5,xanchor="center"),
+            title=dict(text=f"<b>{periodo}</b>",font=dict(size=16,color="#1e293b"),x=0.5,xanchor="center"),
             bargap=0.28,
-            xaxis=dict(tickfont=dict(color="#b0bec5",size=11,family="DM Mono"),
-                       gridcolor="rgba(255,255,255,0.04)",linecolor="rgba(255,255,255,0.06)",tickangle=-38),
-            yaxis=dict(title=dict(text="Valor (R$)",font=dict(color="#64748b",size=11)),
-                       tickfont=dict(color="#64748b",size=10),
-                       gridcolor="rgba(255,255,255,0.05)",tickformat=",.0f",side="left"),
-            yaxis2=dict(title=dict(text="Quantidade",font=dict(color="#f59e0b",size=11)),
-                        tickfont=dict(color="#f59e0b",size=10),overlaying="y",side="right",showgrid=False),
-            legend=dict(bgcolor="rgba(8,15,35,0.92)",bordercolor="rgba(56,189,248,0.2)",borderwidth=1,
-                        font=dict(color="#94a3b8",size=11),orientation="h",x=1.0,xanchor="right",y=-0.22),
+            xaxis=dict(tickfont=dict(color="#334155",size=11,family="DM Mono"),
+                       gridcolor="rgba(0,0,0,0.06)",linecolor="rgba(0,0,0,0.12)",tickangle=-38),
+            yaxis=dict(title=dict(text="Valor (R$)",font=dict(color="#475569",size=11)),
+                       tickfont=dict(color="#475569",size=10),
+                       gridcolor="rgba(0,0,0,0.06)",tickformat=",.0f",side="left"),
+            yaxis2=dict(title=dict(text="Quantidade",font=dict(color="#b45309",size=11)),
+                        tickfont=dict(color="#b45309",size=10),overlaying="y",side="right",showgrid=False),
+            legend=dict(bgcolor="rgba(255,255,255,0.95)",bordercolor="rgba(0,0,0,0.12)",borderwidth=1,
+                        font=dict(color="#334155",size=11),orientation="h",x=1.0,xanchor="right",y=-0.22),
         )
         return fig
 
@@ -517,8 +517,8 @@ with tab_dash:
             n_m = len(df_mot_v)
             bc_m = ["#ef4444" if i<3 else "#f97316" if i<6 else "#0ea5e9" for i in range(n_m)]
             fig_mv = make_combo_chart(df_mot_v, COL_MOTIVO, "Valor", "Qtd", "", "", bc_m)
-            fig_mv.update_layout(height=max(440,min(n_m*60,680)), margin=dict(t=40,b=110,l=12,r=70))
-            fig_mv.update_xaxes(tickangle=-35, automargin=True)
+            fig_mv.update_layout(height=max(440,min(n_m*60,680)), margin=dict(t=40,b=160,l=12,r=70))
+            fig_mv.update_xaxes(tickangle=-35, automargin=True, tickfont=dict(size=14, color="#1e293b", family="Space Grotesk"))
             st.plotly_chart(fig_mv, use_container_width=True)
             st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 3 — maior impacto</span><span>🟠 4–6 — atenção</span><span>🔵 Demais</span></div>', unsafe_allow_html=True)
             with st.expander("📋 Tabela de motivos"):
