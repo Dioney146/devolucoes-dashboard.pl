@@ -249,20 +249,23 @@ REENT_COLS_MAP = {
     "TOTPESO":           ["TOTPESO","PESO"],
     "NUMTRANSVENDA":     ["NUMTRANSVENDA","NUMTRANS","VENDA"],
     "NUMCARANTERIOR":    ["NUMCARANTERIOR"],
-    "PLACAANT":          ["PLACAANT"],
+    # ── Placa anterior — planilha pode vir como PLACAANT ou ANTERIOR
+    "PLACAANT":          ["PLACAANT","PLACA ANT","PLACA_ANT","ANTERIOR","PLACACARANT","PLACAANTERIOR"],
     "COD_MOT_ANTERIOR":  ["COD MOT ANTERIOR","COD_MOT_ANTERIOR"],
     "NOME_MOT_ANTERIOR": ["NOME MOT ANTERIOR","NOME_MOT_ANTERIOR"],
     "COD_AJU_ANTERIOR":  ["COD AJU ANTERIOR","COD_AJU_ANTERIOR"],
     "NOME_AJU_ANTERIOR": ["NOME AJU ANTERIOR","NOME_AJU_ANTERIOR"],
     "NUMCARATUAL":       ["NUMCARATUAL"],
-    "PLACAATUAL":        ["PLACAATUAL"],
+    # ── Placa atual — planilha pode vir sem espaço, com espaço ou abreviada
+    "PLACAATUAL":        ["PLACAATUAL","PLACA ATUAL","PLACA_ATUAL","PLACACAR","PLACAATU","PLACAAT"],
     "COD_MOT_ATUAL":     ["COD MOT ATUAL","COD_MOT_ATUAL"],
     "NOME_MOT_ATUAL":    ["NOME MOT ATUAL","NOME_MOT_ATUAL"],
     "COD_AJU_ATUAL":     ["COD AJU ATUAL","COD_AJU_ATUAL"],
     "NOME_AJU_ATUAL":    ["NOME AJU ATUAL","NOME_AJU_ATUAL"],
     "DATATRANSF":        ["DTRANSF","DATATRANSF","DATA_TRANSF"],
     "CODMOTIVO":         ["CODMOTIVO"],
-    "MOTIVOTRANSF":      ["MOTIVOTRANSF"],
+    # ── Motivo — pode vir com variações
+    "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO TRANSF","MOTIVO_TRANSF","MOTIVOTRANS","MOTIVO"],
     "CODCLI":            ["CODCLI"],
     "CLIENTE":           ["CLIENTE"],
     "BAIRROENT":         ["BAIRROENT"],
@@ -1056,6 +1059,13 @@ with tab_reent_det:
         st.markdown("---")
         _det_placa_col  = reent_cols.get("PLACAATUAL")
         _det_motivo_col = reent_cols.get("MOTIVOTRANSF")
+
+        # Diagnóstico: mostrar colunas reais da planilha se não encontrar
+        if not _det_placa_col or not _det_motivo_col:
+            with st.expander("⚠️ Diagnóstico — colunas da planilha de reentregas"):
+                st.write(f"**Colunas encontradas:** `{list(df_reent_raw.columns)}`")
+                st.write(f"PLACAATUAL mapeada para → `{_det_placa_col}`")
+                st.write(f"MOTIVOTRANSF mapeada para → `{_det_motivo_col}`")
 
         gcol1, gcol2 = st.columns(2, gap="large")
 
