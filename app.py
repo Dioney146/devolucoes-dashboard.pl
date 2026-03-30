@@ -247,23 +247,24 @@ REENT_COLS_MAP = {
     "DTSAIDA":           ["DTSAIDA"],
     "VLTOTGER":          ["VLTOTGER","VLTOT","VLTOTAL"],
     "TOTPESO":           ["TOTPESO","PESO"],
-    "NUMTRANSVENDA":     ["NUMTRANSVENDA","NUMTRANS","VENDA"],
+    "NUMTRANSVENDA":     ["NUMTRANSVENDA","NUMTRANS"],
     "NUMCARANTERIOR":    ["NUMCARANTERIOR"],
-    "PLACAANT":          ["PLACAANT","PLACA_ANT","ANTERIOR","PLACAANTERIOR"],
-    "COD_MOT_ANTERIOR":  ["COD_MOT_ANTERIOR","COD MOT ANTERIOR"],
-    "NOME_MOT_ANTERIOR": ["NOME_MOT_ANTERIOR","NOME MOT ANTERIOR"],
-    "COD_AJU_ANTERIOR":  ["COD_AJU_ANTERIOR","COD AJU ANTERIOR"],
-    "NOME_AJU_ANTERIOR": ["NOME_AJU_ANTERIOR","NOME AJU ANTERIOR"],
+    "PLACAANT":          ["ANTERIOR","PLACAANT","PLACA_ANT","PLACAANTERIOR"],
+    "COD_MOT_ANTERIOR":  ["COD_MOT_ANTERIOR"],
+    "NOME_MOT_ANTERIOR": ["NOME_MOT_ANTERIOR"],
+    "COD_AJU_ANTERIOR":  ["COD_AJU_ANTERIOR"],
+    "NOME_AJU_ANTERIOR": ["NOME_AJU_ANTERIOR"],
     "NUMCARATUAL":       ["NUMCARATUAL"],
-    # ── planilha real: "PLACA ATUAL" → após normalização vira "PLACA_ATUAL"
-    "PLACAATUAL":        ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU","PLACAATU"],
-    "COD_MOT_ATUAL":     ["COD_MOT_ATUAL","COD MOT ATUAL"],
-    "NOME_MOT_ATUAL":    ["NOME_MOT_ATUAL","NOME MOT ATUAL"],
-    "COD_AJU_ATUAL":     ["COD_AJU_ATUAL","COD AJU ATUAL"],
-    "NOME_AJU_ATUAL":    ["NOME_AJU_ATUAL","NOME AJU ATUAL"],
+    # planilha: "PLACA ATUAL" → após normalização → "PLACA_ATUAL"
+    "PLACAATUAL":        ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"],
+    "COD_MOT_ATUAL":     ["COD_MOT_ATUAL"],
+    "NOME_MOT_ATUAL":    ["NOME_MOT_ATUAL"],
+    "COD_AJU_ATUAL":     ["COD_AJU_ATUAL"],
+    "NOME_AJU_ATUAL":    ["NOME_AJU_ATUAL"],
+    # planilha: "DTRANSF" → após normalização → "DTRANSF"
     "DATATRANSF":        ["DTRANSF","DATATRANSF","DATA_TRANSF"],
     "CODMOTIVO":         ["CODMOTIVO"],
-    "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO_TRANSF","MOTIVOTRANS","MOTIVO"],
+    "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO_TRANSF"],
     "CODCLI":            ["CODCLI"],
     "CLIENTE":           ["CLIENTE"],
     "BAIRROENT":         ["BAIRROENT"],
@@ -303,7 +304,14 @@ if df_reent_raw is not None:
             df_reent_raw[col] = df_reent_raw[col].fillna("").astype(str).str.strip()
 
     dt_col_r = reent_cols.get("DATATRANSF")
-    if dt_col_r:
+    # fallback: procurar DTRANSF diretamente nas colunas se o mapeamento falhou
+    if not dt_col_r:
+        for _c in ["DTRANSF","DATATRANSF","DATA_TRANSF"]:
+            if _c in df_reent_raw.columns:
+                dt_col_r = _c
+                reent_cols["DATATRANSF"] = _c
+                break
+    if dt_col_r and dt_col_r in df_reent_raw.columns:
         df_reent_raw["_DATATRANSF_DT"] = pd.to_datetime(df_reent_raw[dt_col_r], dayfirst=True, errors="coerce")
         m2 = df_reent_raw["_DATATRANSF_DT"].isna() & (df_reent_raw[dt_col_r] != "")
         if m2.any():
@@ -1059,6 +1067,15 @@ with tab_reent_det:
         st.markdown("---")
         _det_placa_col  = reent_cols.get("PLACAATUAL")
         _det_motivo_col = reent_cols.get("MOTIVOTRANSF")
+        # fallback: busca direta nas colunas reais
+        if not _det_placa_col:
+            for _c in ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"]:
+                if _c in df_det_base.columns:
+                    _det_placa_col = _c; break
+        if not _det_motivo_col:
+            for _c in ["MOTIVOTRANSF","MOTIVO_TRANSF"]:
+                if _c in df_det_base.columns:
+                    _det_motivo_col = _c; break
 
         # Diagnóstico: mostrar colunas reais da planilha se não encontrar
         if not _det_placa_col or not _det_motivo_col:
