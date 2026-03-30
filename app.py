@@ -161,13 +161,41 @@ MIXED = ["#0ea5e9","#22c55e","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 SHEET_ID       = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
 GSHEETS_URL    = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&id={SHEET_ID}"
-REENTREGAS_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261+-+REENTREGAS+2026"
+
+# URLs alternativas para a aba de reentregas (diferentes formas de referenciar)
+REENTREGAS_URLS = [
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261+-+REENTREGAS+2026",
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261%20-%20REENTREGAS%202026",
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=REENTREGAS+2026",
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=REENTREGAS",
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1",
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=2",
+]
 
 @st.cache_data(ttl=60)
 def load_data(url):
     r = requests.get(url, timeout=30, headers={"User-Agent":"Mozilla/5.0"})
     r.raise_for_status()
     return pd.read_csv(io.StringIO(r.text))
+
+@st.cache_data(ttl=60)
+def load_reentregas():
+    """Tenta múltiplas URLs até encontrar a aba de reentregas com dados válidos."""
+    erros = []
+    for url in REENTREGAS_URLS:
+        try:
+            r = requests.get(url, timeout=30, headers={"User-Agent":"Mozilla/5.0"})
+            r.raise_for_status()
+            df = pd.read_csv(io.StringIO(r.text))
+            # Verifica se é a aba certa: deve ter pelo menos DTRANSF ou MOTIVOTRANSF
+            cols_up = [str(c).strip().upper().replace(" ","_") for c in df.columns]
+            if any(c in cols_up for c in ["DTRANSF","MOTIVOTRANSF","NUMNOTA","VLTOTGER"]):
+                return df, url, None
+            else:
+                erros.append(f"URL ok mas colunas não reconhecidas: {cols_up[:6]}")
+        except Exception as e:
+            erros.append(f"{url.split('sheet=')[-1][:40]} → {str(e)[:80]}")
+    return None, None, erros
 
 def parse_brl(s):
     s = str(s).replace("R$","").strip()
@@ -188,8 +216,11 @@ with st.spinner("⏳ Carregando dados..."):
 # ── Carrega reentregas ────────────────────────────────────────────────────────
 df_reent_raw = None
 reent_load_error = None
+reent_url_usada = None
 try:
-    df_reent_raw = load_data(REENTREGAS_URL)
+    df_reent_raw, reent_url_usada, _erros = load_reentregas()
+    if df_reent_raw is None:
+        reent_load_error = "Nenhuma URL funcionou: " + " | ".join(_erros or [])
 except Exception as e:
     reent_load_error = str(e)
 
@@ -760,7 +791,17 @@ with tab_dash:
 with tab_reent:
     if reent_load_error:
         st.error(f"❌ Erro ao carregar reentregas: {reent_load_error}")
-        st.info("💡 Verifique se a aba '8261 - REENTREGAS 2026' está publicada no Google Sheets.")
+        st.markdown("""
+        **Como resolver:**
+        1. Abra a planilha no Google Sheets
+        2. Vá em **Arquivo → Compartilhar → Publicar na web**
+        3. Selecione a aba **8261 - REENTREGAS 2026**
+        4. Clique em **Publicar** e confirme
+        5. Volte aqui e clique em **🔄 Atualizar**
+        """)
+        with st.expander("🔧 URLs tentadas"):
+            for u in REENTREGAS_URLS:
+                st.code(u)
     elif df_reent is None or len(df_reent) == 0:
         st.warning("⚠️ Nenhum dado encontrado na aba de reentregas.")
     else:
@@ -1077,12 +1118,16 @@ with tab_reent_det:
                 if _c in df_det_base.columns:
                     _det_motivo_col = _c; break
 
-        # Diagnóstico: mostrar colunas reais da planilha se não encontrar
-        if not _det_placa_col or not _det_motivo_col:
-            with st.expander("⚠️ Diagnóstico — colunas da planilha de reentregas"):
-                st.write(f"**Colunas encontradas:** `{list(df_reent_raw.columns)}`")
-                st.write(f"PLACAATUAL mapeada para → `{_det_placa_col}`")
-                st.write(f"MOTIVOTRANSF mapeada para → `{_det_motivo_col}`")
+        # Diagnóstico: sempre disponível para conferir colunas
+        with st.expander("🔧 Diagnóstico — colunas da planilha de reentregas"):
+            cols_real = list(df_reent_raw.columns)
+            st.write(f"**URL usada:** `{reent_url_usada}`")
+            st.write(f"**Total de linhas:** {len(df_reent_raw)} | **Colunas:** {len(cols_real)}")
+            st.write(f"**Colunas encontradas:** `{cols_real}`")
+            st.write(f"PLACA_ATUAL mapeada → `{reent_cols.get('PLACAATUAL')}`")
+            st.write(f"MOTIVOTRANSF mapeada → `{reent_cols.get('MOTIVOTRANSF')}`")
+            st.write(f"DTRANSF mapeada → `{reent_cols.get('DATATRANSF')}`")
+            st.write(f"PLACAANT mapeada → `{reent_cols.get('PLACAANT')}`")
 
         gcol1, gcol2 = st.columns(2, gap="large")
 
