@@ -249,23 +249,21 @@ REENT_COLS_MAP = {
     "TOTPESO":           ["TOTPESO","PESO"],
     "NUMTRANSVENDA":     ["NUMTRANSVENDA","NUMTRANS","VENDA"],
     "NUMCARANTERIOR":    ["NUMCARANTERIOR"],
-    # ── Placa anterior — planilha pode vir como PLACAANT ou ANTERIOR
-    "PLACAANT":          ["PLACAANT","PLACA ANT","PLACA_ANT","ANTERIOR","PLACACARANT","PLACAANTERIOR"],
-    "COD_MOT_ANTERIOR":  ["COD MOT ANTERIOR","COD_MOT_ANTERIOR"],
-    "NOME_MOT_ANTERIOR": ["NOME MOT ANTERIOR","NOME_MOT_ANTERIOR"],
-    "COD_AJU_ANTERIOR":  ["COD AJU ANTERIOR","COD_AJU_ANTERIOR"],
-    "NOME_AJU_ANTERIOR": ["NOME AJU ANTERIOR","NOME_AJU_ANTERIOR"],
+    "PLACAANT":          ["PLACAANT","PLACA_ANT","ANTERIOR","PLACAANTERIOR"],
+    "COD_MOT_ANTERIOR":  ["COD_MOT_ANTERIOR","COD MOT ANTERIOR"],
+    "NOME_MOT_ANTERIOR": ["NOME_MOT_ANTERIOR","NOME MOT ANTERIOR"],
+    "COD_AJU_ANTERIOR":  ["COD_AJU_ANTERIOR","COD AJU ANTERIOR"],
+    "NOME_AJU_ANTERIOR": ["NOME_AJU_ANTERIOR","NOME AJU ANTERIOR"],
     "NUMCARATUAL":       ["NUMCARATUAL"],
-    # ── Placa atual — planilha pode vir sem espaço, com espaço ou abreviada
-    "PLACAATUAL":        ["PLACAATUAL","PLACA ATUAL","PLACA_ATUAL","PLACACAR","PLACAATU","PLACAAT"],
-    "COD_MOT_ATUAL":     ["COD MOT ATUAL","COD_MOT_ATUAL"],
-    "NOME_MOT_ATUAL":    ["NOME MOT ATUAL","NOME_MOT_ATUAL"],
-    "COD_AJU_ATUAL":     ["COD AJU ATUAL","COD_AJU_ATUAL"],
-    "NOME_AJU_ATUAL":    ["NOME AJU ATUAL","NOME_AJU_ATUAL"],
+    # ── planilha real: "PLACA ATUAL" → após normalização vira "PLACA_ATUAL"
+    "PLACAATUAL":        ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU","PLACAATU"],
+    "COD_MOT_ATUAL":     ["COD_MOT_ATUAL","COD MOT ATUAL"],
+    "NOME_MOT_ATUAL":    ["NOME_MOT_ATUAL","NOME MOT ATUAL"],
+    "COD_AJU_ATUAL":     ["COD_AJU_ATUAL","COD AJU ATUAL"],
+    "NOME_AJU_ATUAL":    ["NOME_AJU_ATUAL","NOME AJU ATUAL"],
     "DATATRANSF":        ["DTRANSF","DATATRANSF","DATA_TRANSF"],
     "CODMOTIVO":         ["CODMOTIVO"],
-    # ── Motivo — pode vir com variações
-    "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO TRANSF","MOTIVO_TRANSF","MOTIVOTRANS","MOTIVO"],
+    "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO_TRANSF","MOTIVOTRANS","MOTIVO"],
     "CODCLI":            ["CODCLI"],
     "CLIENTE":           ["CLIENTE"],
     "BAIRROENT":         ["BAIRROENT"],
@@ -282,12 +280,12 @@ reent_cols = {}
 REENT_VALOR_COL = "_VALOR_REENT"
 
 if df_reent_raw is not None:
-    df_reent_raw.columns = [str(c).strip().upper() for c in df_reent_raw.columns]
+    df_reent_raw.columns = [str(c).strip().upper().replace(" ","_") for c in df_reent_raw.columns]
 
     def get_col_reent(alts):
         for n in alts:
-            if n.strip().upper() in df_reent_raw.columns:
-                return n.strip().upper()
+            if n.strip().upper().replace(" ","_") in df_reent_raw.columns:
+                return n.strip().upper().replace(" ","_")
         return None
 
     for canonical, alts in REENT_COLS_MAP.items():
@@ -1023,7 +1021,9 @@ with tab_reent_det:
         df_det_base=df_reent.copy()
         if usar_data_det and dt_det_sel:
             df_det_base=df_det_base[df_det_base["_DATATRANSF_DT"].dt.date==dt_det_sel]
-            st.info(f"📅 {dt_det_sel.strftime('%d/%m/%Y')} — {len(df_det_base)} registros")
+            st.info(f"🔎 Filtro ativo: 📅 **{dt_det_sel.strftime('%d/%m/%Y')}** — {len(df_det_base)} registros nos gráficos e tabela")
+        else:
+            st.info(f"📊 Exibindo **todos os períodos** — {len(df_det_base)} registros totais. Use o filtro de data acima para detalhar.")
 
         ds1,ds2,ds3,ds4=st.columns(4,gap="medium")
         with ds1: s_cli_r=st.text_input("👤 Cliente",placeholder="Nome",key="det_cli")
