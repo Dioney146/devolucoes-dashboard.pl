@@ -401,6 +401,48 @@ if sel_motivo:
 if filtros_info:
     st.info(f"🔎 Filtros: {' · '.join(filtros_info)} — **{total_notas} registros filtrados**")
 
+# ── Função reutilizável de gráfico de barras para reentregas ─────────────────
+def make_bar_reent_dash(df_data, x_col, y_col, bar_colors, title_txt, ylabel="Qtd"):
+    """Gráfico de barras simples para reentregas — usado no Dashboard e Detalhes."""
+    n = len(df_data)
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df_data[x_col],
+        y=df_data[y_col],
+        marker=dict(color=bar_colors[:n], opacity=0.90,
+                    line=dict(color="rgba(255,255,255,0.07)", width=0.5)),
+        text=[str(v) for v in df_data[y_col]],
+        textposition="outside",
+        textfont=dict(size=15, color="#ffffff", family="DM Mono"),
+        hovertemplate="<b>%{x}</b><br>" + ylabel + ": <b>%{y}</b><extra></extra>",
+    ))
+    h = max(420, min(n * 40, 620))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.32)",
+        font=dict(color="#c8d8e8", family="Space Grotesk"),
+        height=h,
+        margin=dict(t=50, b=100, l=12, r=20),
+        title=dict(text=f"<b>{title_txt}</b>",
+                   font=dict(size=16, color="#ffffff"), x=0.5, xanchor="center"),
+        bargap=0.30,
+        xaxis=dict(
+            tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
+            gridcolor="rgba(0,0,0,0)",
+            linecolor="rgba(0,0,0,0)",
+            zeroline=False,
+            tickangle=-38,
+            automargin=True,
+        ),
+        yaxis=dict(
+            title=dict(text=""),
+            showticklabels=False,
+            gridcolor="rgba(0,0,0,0)",
+            zeroline=False,
+        ),
+    )
+    return fig
+
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_dash, tab_reent, tab_reent_det, tab_campos, tab_dados = st.tabs([
     "📊  Dashboard",
@@ -641,47 +683,6 @@ with tab_dash:
         _placaant_col  = reent_cols.get("PLACAANT")
         _motivo_r_col  = reent_cols.get("MOTIVOTRANSF")
         _rv_col        = REENT_VALOR_COL
-
-        def make_bar_reent_dash(df_data, x_col, y_col, bar_colors, title_txt, ylabel="Qtd"):
-            """Gráfico de barras simples para reentregas no dashboard."""
-            n = len(df_data)
-            fig = go.Figure()
-            fig.add_trace(go.Bar(
-                x=df_data[x_col],
-                y=df_data[y_col],
-                marker=dict(color=bar_colors[:n], opacity=0.90,
-                            line=dict(color="rgba(255,255,255,0.07)", width=0.5)),
-                text=[str(v) for v in df_data[y_col]],
-                textposition="outside",
-                textfont=dict(size=15, color="#ffffff", family="DM Mono"),
-                hovertemplate="<b>%{x}</b><br>" + ylabel + ": <b>%{y}</b><extra></extra>",
-            ))
-            h = max(420, min(n * 40, 620))
-            fig.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.32)",
-                font=dict(color="#c8d8e8", family="Space Grotesk"),
-                height=h,
-                margin=dict(t=50, b=100, l=12, r=20),
-                title=dict(text=f"<b>{title_txt}</b>",
-                           font=dict(size=16, color="#ffffff"), x=0.5, xanchor="center"),
-                bargap=0.30,
-                xaxis=dict(
-                    tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
-                    gridcolor="rgba(0,0,0,0)",
-                    linecolor="rgba(0,0,0,0)",
-                    zeroline=False,
-                    tickangle=-38,
-                    automargin=True,
-                ),
-                yaxis=dict(
-                    title=dict(text=""),
-                    showticklabels=False,
-                    gridcolor="rgba(0,0,0,0)",
-                    zeroline=False,
-                ),
-            )
-            return fig
 
         dash_r1, dash_r2 = st.columns(2, gap="large")
 
@@ -1050,6 +1051,65 @@ with tab_reent_det:
             for cp in ["PLACAANT","PLACAATUAL"]:
                 if cp in df_det.columns: mask_p=mask_p|df_det[cp].str.contains(s_placa_r.strip(),case=False,na=False)
             df_det=df_det[mask_p]
+
+        # ── Gráficos de PLACAATUAL e MOTIVOTRANSF ────────────────────────────
+        st.markdown("---")
+        _det_placa_col  = reent_cols.get("PLACAATUAL")
+        _det_motivo_col = reent_cols.get("MOTIVOTRANSF")
+
+        gcol1, gcol2 = st.columns(2, gap="large")
+
+        with gcol1:
+            st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Reentregas por PLACAATUAL</h3></div>', unsafe_allow_html=True)
+            if _det_placa_col and _det_placa_col in df_det_base.columns:
+                df_gplaca = (df_det_base[df_det_base[_det_placa_col].str.strip() != ""]
+                             .groupby(_det_placa_col)
+                             .agg(Qtd=(_det_placa_col, "count"))
+                             .reset_index()
+                             .sort_values("Qtd", ascending=False))
+                if not df_gplaca.empty:
+                    n_gp = len(df_gplaca)
+                    bc_gp = ["#ef4444" if i<3 else "#f97316" if i<6 else "#0ea5e9" for i in range(n_gp)]
+                    fig_gp = make_bar_reent_dash(
+                        df_gplaca, _det_placa_col, "Qtd", bc_gp,
+                        "Quantidade por PLACAATUAL", "Qtd"
+                    )
+                    st.plotly_chart(fig_gp, use_container_width=True)
+                    st.markdown(
+                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
+                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
+                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
+                        '<span>🔵 Demais</span></div>', unsafe_allow_html=True)
+                else:
+                    st.info("Sem dados de placa para o filtro selecionado.")
+            else:
+                st.warning("Coluna PLACAATUAL não encontrada.")
+
+        with gcol2:
+            st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Reentregas por MOTIVO</h3></div>', unsafe_allow_html=True)
+            if _det_motivo_col and _det_motivo_col in df_det_base.columns:
+                df_gmot = (df_det_base[df_det_base[_det_motivo_col].str.strip() != ""]
+                           .groupby(_det_motivo_col)
+                           .agg(Qtd=(_det_motivo_col, "count"))
+                           .reset_index()
+                           .sort_values("Qtd", ascending=False))
+                if not df_gmot.empty:
+                    n_gm = len(df_gmot)
+                    bc_gm = ["#ef4444" if i<3 else "#f97316" if i<6 else "#22c55e" for i in range(n_gm)]
+                    fig_gm = make_bar_reent_dash(
+                        df_gmot, _det_motivo_col, "Qtd", bc_gm,
+                        "Quantidade por MOTIVOTRANSF", "Qtd"
+                    )
+                    st.plotly_chart(fig_gm, use_container_width=True)
+                    st.markdown(
+                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
+                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
+                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
+                        '<span>🟢 Demais</span></div>', unsafe_allow_html=True)
+                else:
+                    st.info("Sem dados de motivo para o filtro selecionado.")
+            else:
+                st.warning("Coluna MOTIVOTRANSF não encontrada.")
 
         st.markdown("---")
         st.caption(f"Exibindo {len(df_det):,} registros".replace(",","."))
