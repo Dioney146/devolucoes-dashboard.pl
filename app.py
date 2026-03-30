@@ -633,6 +633,116 @@ with tab_dash:
                 rows_h+=f'<tr style="background:{bg};"><td style="padding:10px 14px;color:#dde6f0;font-size:0.84rem;font-weight:600;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Motivo"]}</td><td style="padding:10px 14px;color:#7dd3fc;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Qtd"]}</td><td style="padding:10px 14px;color:#4ade80;font-size:0.84rem;font-weight:600;font-family:monospace;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Valor Total"]}</td><td style="padding:10px 14px;color:#f59e0b;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.07);">{row["% Total"]}</td></tr>'
             st.markdown(f'<div style="background:rgba(6,13,31,0.92);border:1px solid rgba(56,189,248,0.15);border-radius:14px;overflow:hidden;max-height:360px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:rgba(12,26,58,0.98);"><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-align:left;text-transform:uppercase;border-bottom:1px solid rgba(56,189,248,0.2);">Motivo</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(56,189,248,0.2);">Qtd</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.2);">Valor Total</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(56,189,248,0.2);">%</th></tr></thead><tbody>{rows_h}</tbody></table></div>', unsafe_allow_html=True)
 
+    # ── SEÇÃO REENTREGAS NO DASHBOARD ────────────────────────────────────────
+    if df_reent is not None and len(df_reent) > 0:
+        st.markdown("---")
+        st.markdown('<div class="sec-header"><div class="bar"></div><h3>🔄 REENTREGAS — Visão Geral no Dashboard</h3></div>', unsafe_allow_html=True)
+
+        _placaant_col  = reent_cols.get("PLACAANT")
+        _motivo_r_col  = reent_cols.get("MOTIVOTRANSF")
+        _rv_col        = REENT_VALOR_COL
+
+        def make_bar_reent_dash(df_data, x_col, y_col, bar_colors, title_txt, ylabel="Qtd"):
+            """Gráfico de barras simples para reentregas no dashboard."""
+            n = len(df_data)
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=df_data[x_col],
+                y=df_data[y_col],
+                marker=dict(color=bar_colors[:n], opacity=0.90,
+                            line=dict(color="rgba(255,255,255,0.07)", width=0.5)),
+                text=[str(v) for v in df_data[y_col]],
+                textposition="outside",
+                textfont=dict(size=15, color="#ffffff", family="DM Mono"),
+                hovertemplate="<b>%{x}</b><br>" + ylabel + ": <b>%{y}</b><extra></extra>",
+            ))
+            h = max(420, min(n * 40, 620))
+            fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(255,255,255,0.32)",
+                font=dict(color="#c8d8e8", family="Space Grotesk"),
+                height=h,
+                margin=dict(t=50, b=100, l=12, r=20),
+                title=dict(text=f"<b>{title_txt}</b>",
+                           font=dict(size=16, color="#ffffff"), x=0.5, xanchor="center"),
+                bargap=0.30,
+                xaxis=dict(
+                    tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
+                    gridcolor="rgba(0,0,0,0)",
+                    linecolor="rgba(0,0,0,0)",
+                    zeroline=False,
+                    tickangle=-38,
+                    automargin=True,
+                ),
+                yaxis=dict(
+                    title=dict(text=""),
+                    showticklabels=False,
+                    gridcolor="rgba(0,0,0,0)",
+                    zeroline=False,
+                ),
+            )
+            return fig
+
+        dash_r1, dash_r2 = st.columns(2, gap="large")
+
+        # ── Gráfico 1: Reentregas por MOTIVO ─────────────────────────────────
+        with dash_r1:
+            st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Reentregas por MOTIVO</h3></div>', unsafe_allow_html=True)
+            if _motivo_r_col and _motivo_r_col in df_reent.columns:
+                df_dash_mot = (df_reent[df_reent[_motivo_r_col].str.strip() != ""]
+                               .groupby(_motivo_r_col)
+                               .agg(Qtd=(_motivo_r_col, "count"))
+                               .reset_index()
+                               .sort_values("Qtd", ascending=False))
+                if not df_dash_mot.empty:
+                    n_dm = len(df_dash_mot)
+                    bc_dm = ["#ef4444" if i < 3 else "#f97316" if i < 6 else "#22c55e" for i in range(n_dm)]
+                    fig_dash_mot = make_bar_reent_dash(
+                        df_dash_mot, _motivo_r_col, "Qtd", bc_dm,
+                        "Quantidade por Motivo de Reentrega", "Qtd"
+                    )
+                    st.plotly_chart(fig_dash_mot, use_container_width=True)
+                    st.markdown(
+                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
+                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
+                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
+                        '<span>🟢 Demais</span></div>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.info("Sem dados de motivo de reentrega.")
+            else:
+                st.warning("Coluna MOTIVOTRANSF não encontrada nas reentregas.")
+
+        # ── Gráfico 2: Reentregas por PLACA ──────────────────────────────────
+        with dash_r2:
+            st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Reentregas por PLACA (PLACAANT)</h3></div>', unsafe_allow_html=True)
+            if _placaant_col and _placaant_col in df_reent.columns:
+                df_dash_placa = (df_reent[df_reent[_placaant_col].str.strip() != ""]
+                                 .groupby(_placaant_col)
+                                 .agg(Qtd=(_placaant_col, "count"))
+                                 .reset_index()
+                                 .sort_values("Qtd", ascending=False))
+                if not df_dash_placa.empty:
+                    n_dp = len(df_dash_placa)
+                    bc_dp = ["#ef4444" if i < 3 else "#f97316" if i < 6 else "#0ea5e9" for i in range(n_dp)]
+                    fig_dash_placa = make_bar_reent_dash(
+                        df_dash_placa, _placaant_col, "Qtd", bc_dp,
+                        "Quantidade por Placa (PLACAANT)", "Qtd"
+                    )
+                    st.plotly_chart(fig_dash_placa, use_container_width=True)
+                    st.markdown(
+                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
+                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
+                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
+                        '<span>🔵 Demais</span></div>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.info("Sem dados de placa de reentrega.")
+            else:
+                st.warning("Coluna PLACAANT não encontrada nas reentregas.")
+
 
 # ────────────────────────────────────────────────────────────────────────────
 # ABA 2 — REENTREGAS
