@@ -162,7 +162,6 @@ MIXED = ["#0ea5e9","#22c55e","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","
 SHEET_ID       = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
 GSHEETS_URL    = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&id={SHEET_ID}"
 
-# URLs alternativas para a aba de reentregas (diferentes formas de referenciar)
 REENTREGAS_URLS = [
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261+-+REENTREGAS+2026",
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261%20-%20REENTREGAS%202026",
@@ -180,14 +179,12 @@ def load_data(url):
 
 @st.cache_data(ttl=60)
 def load_reentregas():
-    """Tenta múltiplas URLs até encontrar a aba de reentregas com dados válidos."""
     erros = []
     for url in REENTREGAS_URLS:
         try:
             r = requests.get(url, timeout=30, headers={"User-Agent":"Mozilla/5.0"})
             r.raise_for_status()
             df = pd.read_csv(io.StringIO(r.text))
-            # Verifica se é a aba certa: deve ter pelo menos DTRANSF ou MOTIVOTRANSF
             cols_up = [str(c).strip().upper().replace(" ","_") for c in df.columns]
             if any(c in cols_up for c in ["DTRANSF","MOTIVOTRANSF","NUMNOTA","VLTOTGER"]):
                 return df, url, None
@@ -286,13 +283,11 @@ REENT_COLS_MAP = {
     "COD_AJU_ANTERIOR":  ["COD_AJU_ANTERIOR"],
     "NOME_AJU_ANTERIOR": ["NOME_AJU_ANTERIOR"],
     "NUMCARATUAL":       ["NUMCARATUAL"],
-    # planilha: "PLACA ATUAL" → após normalização → "PLACA_ATUAL"
     "PLACAATUAL":        ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"],
     "COD_MOT_ATUAL":     ["COD_MOT_ATUAL"],
     "NOME_MOT_ATUAL":    ["NOME_MOT_ATUAL"],
     "COD_AJU_ATUAL":     ["COD_AJU_ATUAL"],
     "NOME_AJU_ATUAL":    ["NOME_AJU_ATUAL"],
-    # planilha: "DTRANSF" → após normalização → "DTRANSF"
     "DATATRANSF":        ["DTRANSF","DATATRANSF","DATA_TRANSF"],
     "CODMOTIVO":         ["CODMOTIVO"],
     "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO_TRANSF"],
@@ -335,7 +330,6 @@ if df_reent_raw is not None:
             df_reent_raw[col] = df_reent_raw[col].fillna("").astype(str).str.strip()
 
     dt_col_r = reent_cols.get("DATATRANSF")
-    # fallback: procurar DTRANSF diretamente nas colunas se o mapeamento falhou
     if not dt_col_r:
         for _c in ["DTRANSF","DATATRANSF","DATA_TRANSF"]:
             if _c in df_reent_raw.columns:
@@ -443,7 +437,6 @@ if filtros_info:
 
 # ── Função reutilizável de gráfico de barras para reentregas ─────────────────
 def make_bar_reent_dash(df_data, x_col, y_col, bar_colors, title_txt, ylabel="Qtd"):
-    """Gráfico de barras simples para reentregas — usado no Dashboard e Detalhes."""
     n = len(df_data)
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -513,7 +506,10 @@ with tab_dash:
 
     st.markdown("---")
 
-    # ── FUNÇÃO COMBO CHART ATUALIZADA ─────────────────────────────────────────
+    # ── FUNÇÃO COMBO CHART ────────────────────────────────────────────────────
+    # CORREÇÃO: range do yaxis2 alterado de 2.0 para 3.5
+    # Isso empurra a linha amarela para o terço superior do gráfico,
+    # afastando-a das barras e tornando os valores legíveis.
     def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None):
         n = len(df_data)
         if bar_colors is None:
@@ -523,14 +519,12 @@ with tab_dash:
             x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
             marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
             text=[fmt_brl(v) for v in df_data[val_col]],
-            # ── FONTE MAIOR E NEGRITO nos rótulos das barras
             textposition="outside",
             textfont=dict(size=16, color="#ffffff", family="DM Mono"),
             hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
         ))
         fig.add_trace(go.Scatter(
             x=df_data[x_col], y=df_data[qtd_col], name="Qtd.",
-            # ── mode com +text para exibir o valor acima do ponto
             mode="lines+markers+text",
             text=[f"<b>{v}</b>" for v in df_data[qtd_col]],
             textposition="top center",
@@ -542,7 +536,6 @@ with tab_dash:
         h = max(440, min(n*36, 680))
         max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
         fig.update_layout(
-            # ── FUNDO MAIS CLARO no gráfico
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(255,255,255,0.32)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
@@ -553,7 +546,6 @@ with tab_dash:
                 x=0.5, xanchor="center"
             ),
             bargap=0.28,
-            # ── EIXO X: sem grid
             xaxis=dict(
                 tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
                 gridcolor="rgba(0,0,0,0)",
@@ -561,7 +553,6 @@ with tab_dash:
                 zeroline=False,
                 tickangle=-38
             ),
-            # ── EIXO Y1: sem labels, sem grid, sem título
             yaxis=dict(
                 title=dict(text=""),
                 showticklabels=False,
@@ -569,13 +560,12 @@ with tab_dash:
                 zeroline=False,
                 side="left"
             ),
-            # ── EIXO Y2: sem labels, sem grid
             yaxis2=dict(
                 title=dict(text=""),
                 showticklabels=False,
                 overlaying="y", side="right", showgrid=False,
                 zeroline=False,
-                range=[0, max_qtd * 2.0],
+                range=[0, max_qtd * 3.5],  # ← CORREÇÃO: era 2.0, agora 3.5
             ),
             legend=dict(
                 bgcolor="rgba(8,15,35,0.92)",
@@ -726,7 +716,6 @@ with tab_dash:
 
         dash_r1, dash_r2 = st.columns(2, gap="large")
 
-        # ── Gráfico 1: Reentregas por MOTIVO ─────────────────────────────────
         with dash_r1:
             st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Reentregas por MOTIVO</h3></div>', unsafe_allow_html=True)
             if _motivo_r_col and _motivo_r_col in df_reent.columns:
@@ -755,7 +744,6 @@ with tab_dash:
             else:
                 st.warning("Coluna MOTIVOTRANSF não encontrada nas reentregas.")
 
-        # ── Gráfico 2: Reentregas por PLACA ──────────────────────────────────
         with dash_r2:
             st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Reentregas por PLACA (PLACAANT)</h3></div>', unsafe_allow_html=True)
             if _placaant_col and _placaant_col in df_reent.columns:
@@ -849,7 +837,6 @@ with tab_reent:
         if usar_data_reent and dt_reent_sel:
             st.info(f"🔎 Filtro: 📅 {dt_reent_sel.strftime('%d/%m/%Y')} — **{len(df_r)} registros**")
 
-        # KPIs
         total_reent       = len(df_r)
         total_reent_valor = df_r[REENT_VALOR_COL].sum() if REENT_VALOR_COL in df_r.columns else 0
         placaant_col      = reent_cols.get("PLACAANT")
@@ -888,7 +875,6 @@ with tab_reent:
 
         st.markdown("---")
 
-        # ── FUNÇÃO COMBO REENTREGAS ATUALIZADA ───────────────────────────────
         def make_combo_reent(df_data, x_col, y_col, qtd_col, bar_colors=None):
             n = len(df_data)
             if bar_colors is None:
@@ -1104,11 +1090,9 @@ with tab_reent_det:
                 if cp in df_det.columns: mask_p=mask_p|df_det[cp].str.contains(s_placa_r.strip(),case=False,na=False)
             df_det=df_det[mask_p]
 
-        # ── Gráficos de PLACAATUAL e MOTIVOTRANSF ────────────────────────────
         st.markdown("---")
         _det_placa_col  = reent_cols.get("PLACAATUAL")
         _det_motivo_col = reent_cols.get("MOTIVOTRANSF")
-        # fallback: busca direta nas colunas reais
         if not _det_placa_col:
             for _c in ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"]:
                 if _c in df_det_base.columns:
@@ -1118,7 +1102,6 @@ with tab_reent_det:
                 if _c in df_det_base.columns:
                     _det_motivo_col = _c; break
 
-        # Diagnóstico: sempre disponível para conferir colunas
         with st.expander("🔧 Diagnóstico — colunas da planilha de reentregas"):
             cols_real = list(df_reent_raw.columns)
             st.write(f"**URL usada:** `{reent_url_usada}`")
