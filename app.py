@@ -507,39 +507,55 @@ with tab_dash:
     st.markdown("---")
 
     # ── FUNÇÃO COMBO CHART ────────────────────────────────────────────────────
-    # CORREÇÃO: range do yaxis2 alterado de 2.0 para 3.5
-    # Isso empurra a linha amarela para o terço superior do gráfico,
-    # afastando-a das barras e tornando os valores legíveis.
+    # Valores das barras exibidos ACIMA (textposition outside, Y1 com range ampliado).
+    # Linha amarela posicionada NA BASE do gráfico (Y2 com range invertido:
+    # range=[max_qtd*1.15, 0] faz o 0 ficar no topo e o máximo na base, então
+    # a linha fica na parte inferior sem sobrepor os rótulos de valor).
     def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None):
         n = len(df_data)
         if bar_colors is None:
             bar_colors = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
+
+        max_val = df_data[val_col].max() if len(df_data) > 0 else 1
+        max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
+
         fig = go.Figure()
+
+        # ── Barras de valor — rótulos bem acima via Y1 com topo extra
         fig.add_trace(go.Bar(
             x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
-            marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
+            marker=dict(color=bar_colors, opacity=0.88,
+                        line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
             text=[fmt_brl(v) for v in df_data[val_col]],
             textposition="outside",
-            textfont=dict(size=16, color="#ffffff", family="DM Mono"),
-            hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
+            textfont=dict(size=15, color="#ffffff", family="DM Mono"),
+            hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>",
+            yaxis="y1",
         ))
+
+        # ── Linha de quantidade — posicionada na base (Y2 invertido)
+        # textposition "bottom center" coloca o número logo abaixo do ponto
         fig.add_trace(go.Scatter(
             x=df_data[x_col], y=df_data[qtd_col], name="Qtd.",
             mode="lines+markers+text",
             text=[f"<b>{v}</b>" for v in df_data[qtd_col]],
-            textposition="top center",
-            textfont=dict(color="#fde68a", size=15, family="DM Mono"),
+            textposition="bottom center",
+            textfont=dict(color="#fde68a", size=14, family="DM Mono"),
             line=dict(color="#f59e0b", width=2.5),
-            marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
-            hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
+            marker=dict(color="#fde68a", size=9,
+                        line=dict(color="#f59e0b", width=2), symbol="circle"),
+            hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>",
+            yaxis="y2",
         ))
-        h = max(440, min(n*36, 680))
-        max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
+
+        h = max(460, min(n * 36, 700))
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(255,255,255,0.32)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
-            height=h, margin=dict(t=60, b=90, l=12, r=70),
+            height=h,
+            # margem top ampla para os rótulos de valor das barras não cortarem
+            margin=dict(t=80, b=100, l=12, r=70),
             title=dict(
                 text=f"<b>{periodo}</b>",
                 font=dict(size=17, color="#ffffff"),
@@ -551,28 +567,32 @@ with tab_dash:
                 gridcolor="rgba(0,0,0,0)",
                 linecolor="rgba(0,0,0,0)",
                 zeroline=False,
-                tickangle=-38
+                tickangle=-38,
             ),
+            # Y1: range até 1.35× o máximo para dar espaço aos rótulos acima das barras
             yaxis=dict(
                 title=dict(text=""),
                 showticklabels=False,
                 gridcolor="rgba(0,0,0,0)",
                 zeroline=False,
-                side="left"
+                side="left",
+                range=[0, max_val * 1.35],
             ),
+            # Y2 INVERTIDO: range=[max*1.15, 0] → 0 no topo, máximo na base
+            # Assim a linha de quantidade fica sempre na parte inferior do gráfico
             yaxis2=dict(
                 title=dict(text=""),
                 showticklabels=False,
                 overlaying="y", side="right", showgrid=False,
                 zeroline=False,
-                range=[0, max_qtd * 3.5],  # ← CORREÇÃO: era 2.0, agora 3.5
+                range=[max_qtd * 1.15, 0],  # ← invertido: linha fica na base
             ),
             legend=dict(
                 bgcolor="rgba(8,15,35,0.92)",
                 bordercolor="rgba(56,189,248,0.2)",
                 borderwidth=1,
                 font=dict(color="#c8d8e8", size=14),
-                orientation="h", x=1.0, xanchor="right", y=-0.22
+                orientation="h", x=1.0, xanchor="right", y=-0.24,
             ),
         )
         return fig
