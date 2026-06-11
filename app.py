@@ -162,6 +162,7 @@ MIXED = ["#0ea5e9","#22c55e","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","
 SHEET_ID       = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
 GSHEETS_URL    = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&id={SHEET_ID}"
 
+# URLs alternativas para a aba de reentregas (diferentes formas de referenciar)
 REENTREGAS_URLS = [
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261+-+REENTREGAS+2026",
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261%20-%20REENTREGAS%202026",
@@ -179,12 +180,14 @@ def load_data(url):
 
 @st.cache_data(ttl=60)
 def load_reentregas():
+    """Tenta múltiplas URLs até encontrar a aba de reentregas com dados válidos."""
     erros = []
     for url in REENTREGAS_URLS:
         try:
             r = requests.get(url, timeout=30, headers={"User-Agent":"Mozilla/5.0"})
             r.raise_for_status()
             df = pd.read_csv(io.StringIO(r.text))
+            # Verifica se é a aba certa: deve ter pelo menos DTRANSF ou MOTIVOTRANSF
             cols_up = [str(c).strip().upper().replace(" ","_") for c in df.columns]
             if any(c in cols_up for c in ["DTRANSF","MOTIVOTRANSF","NUMNOTA","VLTOTGER"]):
                 return df, url, None
@@ -283,11 +286,13 @@ REENT_COLS_MAP = {
     "COD_AJU_ANTERIOR":  ["COD_AJU_ANTERIOR"],
     "NOME_AJU_ANTERIOR": ["NOME_AJU_ANTERIOR"],
     "NUMCARATUAL":       ["NUMCARATUAL"],
+    # planilha: "PLACA ATUAL" → após normalização → "PLACA_ATUAL"
     "PLACAATUAL":        ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"],
     "COD_MOT_ATUAL":     ["COD_MOT_ATUAL"],
     "NOME_MOT_ATUAL":    ["NOME_MOT_ATUAL"],
     "COD_AJU_ATUAL":     ["COD_AJU_ATUAL"],
     "NOME_AJU_ATUAL":    ["NOME_AJU_ATUAL"],
+    # planilha: "DTRANSF" → após normalização → "DTRANSF"
     "DATATRANSF":        ["DTRANSF","DATATRANSF","DATA_TRANSF"],
     "CODMOTIVO":         ["CODMOTIVO"],
     "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO_TRANSF"],
@@ -330,6 +335,7 @@ if df_reent_raw is not None:
             df_reent_raw[col] = df_reent_raw[col].fillna("").astype(str).str.strip()
 
     dt_col_r = reent_cols.get("DATATRANSF")
+    # fallback: procurar DTRANSF diretamente nas colunas se o mapeamento falhou
     if not dt_col_r:
         for _c in ["DTRANSF","DATATRANSF","DATA_TRANSF"]:
             if _c in df_reent_raw.columns:
@@ -437,6 +443,7 @@ if filtros_info:
 
 # ── Função reutilizável de gráfico de barras para reentregas ─────────────────
 def make_bar_reent_dash(df_data, x_col, y_col, bar_colors, title_txt, ylabel="Qtd"):
+    """Gráfico de barras simples para reentregas — usado no Dashboard e Detalhes."""
     n = len(df_data)
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -506,93 +513,76 @@ with tab_dash:
 
     st.markdown("---")
 
-    # ── FUNÇÃO COMBO CHART ────────────────────────────────────────────────────
-    # Valores das barras exibidos ACIMA (textposition outside, Y1 com range ampliado).
-    # Linha amarela posicionada NA BASE do gráfico (Y2 com range invertido:
-    # range=[max_qtd*1.15, 0] faz o 0 ficar no topo e o máximo na base, então
-    # a linha fica na parte inferior sem sobrepor os rótulos de valor).
+    # ── FUNÇÃO COMBO CHART ATUALIZADA ─────────────────────────────────────────
     def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None):
         n = len(df_data)
         if bar_colors is None:
             bar_colors = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
-
-        max_val = df_data[val_col].max() if len(df_data) > 0 else 1
-        max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
-
         fig = go.Figure()
-
-        # ── Barras de valor — rótulos bem acima via Y1 com topo extra
         fig.add_trace(go.Bar(
             x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
-            marker=dict(color=bar_colors, opacity=0.88,
-                        line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
+            marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
             text=[fmt_brl(v) for v in df_data[val_col]],
+            # ── FONTE MAIOR E NEGRITO nos rótulos das barras
             textposition="outside",
-            textfont=dict(size=15, color="#ffffff", family="DM Mono"),
-            hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>",
-            yaxis="y1",
+            textfont=dict(size=16, color="#ffffff", family="DM Mono"),
+            hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
         ))
-
-        # ── Linha de quantidade — posicionada na base (Y2 invertido)
-        # textposition "bottom center" coloca o número logo abaixo do ponto
         fig.add_trace(go.Scatter(
             x=df_data[x_col], y=df_data[qtd_col], name="Qtd.",
+            # ── mode com +text para exibir o valor acima do ponto
             mode="lines+markers+text",
             text=[f"<b>{v}</b>" for v in df_data[qtd_col]],
-            textposition="bottom center",
-            textfont=dict(color="#fde68a", size=14, family="DM Mono"),
+            textposition="top center",
+            textfont=dict(color="#fde68a", size=15, family="DM Mono"),
             line=dict(color="#f59e0b", width=2.5),
-            marker=dict(color="#fde68a", size=9,
-                        line=dict(color="#f59e0b", width=2), symbol="circle"),
-            hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>",
-            yaxis="y2",
+            marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
+            hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
         ))
-
-        h = max(460, min(n * 36, 700))
+        h = max(440, min(n*36, 680))
+        max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
         fig.update_layout(
+            # ── FUNDO MAIS CLARO no gráfico
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(255,255,255,0.32)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
-            height=h,
-            # margem top ampla para os rótulos de valor das barras não cortarem
-            margin=dict(t=80, b=100, l=12, r=70),
+            height=h, margin=dict(t=60, b=90, l=12, r=70),
             title=dict(
                 text=f"<b>{periodo}</b>",
                 font=dict(size=17, color="#ffffff"),
                 x=0.5, xanchor="center"
             ),
             bargap=0.28,
+            # ── EIXO X: sem grid
             xaxis=dict(
                 tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
                 gridcolor="rgba(0,0,0,0)",
                 linecolor="rgba(0,0,0,0)",
                 zeroline=False,
-                tickangle=-38,
+                tickangle=-38
             ),
-            # Y1: range até 1.35× o máximo para dar espaço aos rótulos acima das barras
+            # ── EIXO Y1: sem labels, sem grid, sem título
             yaxis=dict(
                 title=dict(text=""),
                 showticklabels=False,
                 gridcolor="rgba(0,0,0,0)",
                 zeroline=False,
-                side="left",
-                range=[0, max_val * 1.35],
+                side="left"
             ),
-            # Y2 INVERTIDO: range=[max*1.15, 0] → 0 no topo, máximo na base
-            # Assim a linha de quantidade fica sempre na parte inferior do gráfico
+            # ── EIXO Y2: sem labels, sem grid
             yaxis2=dict(
                 title=dict(text=""),
                 showticklabels=False,
                 overlaying="y", side="right", showgrid=False,
                 zeroline=False,
-                range=[max_qtd * 1.15, 0],  # ← invertido: linha fica na base
+                range=[0, max_qtd * 2.0],
             ),
             legend=dict(
                 bgcolor="rgba(8,15,35,0.92)",
                 bordercolor="rgba(56,189,248,0.2)",
                 borderwidth=1,
                 font=dict(color="#c8d8e8", size=14),
-                orientation="h", x=1.0, xanchor="right", y=-0.24,
+                orientation="h", x=1.0, xanchor="right", y=-0.22
             ),
         )
         return fig
@@ -736,6 +726,7 @@ with tab_dash:
 
         dash_r1, dash_r2 = st.columns(2, gap="large")
 
+        # ── Gráfico 1: Reentregas por MOTIVO ─────────────────────────────────
         with dash_r1:
             st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Reentregas por MOTIVO</h3></div>', unsafe_allow_html=True)
             if _motivo_r_col and _motivo_r_col in df_reent.columns:
@@ -764,6 +755,7 @@ with tab_dash:
             else:
                 st.warning("Coluna MOTIVOTRANSF não encontrada nas reentregas.")
 
+        # ── Gráfico 2: Reentregas por PLACA ──────────────────────────────────
         with dash_r2:
             st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Reentregas por PLACA (PLACAANT)</h3></div>', unsafe_allow_html=True)
             if _placaant_col and _placaant_col in df_reent.columns:
@@ -857,6 +849,7 @@ with tab_reent:
         if usar_data_reent and dt_reent_sel:
             st.info(f"🔎 Filtro: 📅 {dt_reent_sel.strftime('%d/%m/%Y')} — **{len(df_r)} registros**")
 
+        # KPIs
         total_reent       = len(df_r)
         total_reent_valor = df_r[REENT_VALOR_COL].sum() if REENT_VALOR_COL in df_r.columns else 0
         placaant_col      = reent_cols.get("PLACAANT")
@@ -895,6 +888,7 @@ with tab_reent:
 
         st.markdown("---")
 
+        # ── FUNÇÃO COMBO REENTREGAS ATUALIZADA ───────────────────────────────
         def make_combo_reent(df_data, x_col, y_col, qtd_col, bar_colors=None):
             n = len(df_data)
             if bar_colors is None:
@@ -1110,9 +1104,11 @@ with tab_reent_det:
                 if cp in df_det.columns: mask_p=mask_p|df_det[cp].str.contains(s_placa_r.strip(),case=False,na=False)
             df_det=df_det[mask_p]
 
+        # ── Gráficos de PLACAATUAL e MOTIVOTRANSF ────────────────────────────
         st.markdown("---")
         _det_placa_col  = reent_cols.get("PLACAATUAL")
         _det_motivo_col = reent_cols.get("MOTIVOTRANSF")
+        # fallback: busca direta nas colunas reais
         if not _det_placa_col:
             for _c in ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"]:
                 if _c in df_det_base.columns:
@@ -1122,6 +1118,7 @@ with tab_reent_det:
                 if _c in df_det_base.columns:
                     _det_motivo_col = _c; break
 
+        # Diagnóstico: sempre disponível para conferir colunas
         with st.expander("🔧 Diagnóstico — colunas da planilha de reentregas"):
             cols_real = list(df_reent_raw.columns)
             st.write(f"**URL usada:** `{reent_url_usada}`")
