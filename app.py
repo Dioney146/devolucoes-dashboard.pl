@@ -387,12 +387,12 @@ with fc1:
     if len(datas_ok) > 0:
         datas_unicas = sorted(datas_ok.dt.date.unique())
         opcoes_data = ["— Todas as datas —"] + [d.strftime("%d/%m/%Y") for d in datas_unicas]
-        sel_data_str = st.selectbox(f"📅 Filtrar por {col_label}", opcoes_data, key="g_dtsel")
+        sel_data_str = st.selectbox("📅 Filtrar por DATA", opcoes_data, key="g_dtsel")
         if sel_data_str != "— Todas as datas —":
             dt_sel = datetime.strptime(sel_data_str, "%d/%m/%Y").date()
             usar_data = True
     else:
-        st.caption(f"⚠️ Sem datas válidas em {col_label}")
+        st.caption("⚠️ Sem datas válidas em DATA")
 
 with fc2:
     if COL_DEVOLUCION:
@@ -539,14 +539,15 @@ with tab_dash:
             marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
             hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
         ))
-        h = max(440, min(n*36, 680))
+        h = max(520, min(n*46, 780))
+        max_val = df_data[val_col].max() if len(df_data) > 0 else 1
         max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
         fig.update_layout(
             # ── FUNDO MAIS CLARO no gráfico
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(255,255,255,0.32)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
-            height=h, margin=dict(t=60, b=90, l=12, r=70),
+            height=h, margin=dict(t=80, b=100, l=12, r=70),
             title=dict(
                 text=f"<b>{periodo}</b>",
                 font=dict(size=17, color="#ffffff"),
@@ -561,21 +562,22 @@ with tab_dash:
                 zeroline=False,
                 tickangle=-38
             ),
-            # ── EIXO Y1: sem labels, sem grid, sem título
+            # ── EIXO Y1: sem labels, sem grid, sem título — range com folga de 45% para rótulos
             yaxis=dict(
                 title=dict(text=""),
                 showticklabels=False,
                 gridcolor="rgba(0,0,0,0)",
                 zeroline=False,
-                side="left"
+                side="left",
+                range=[0, max_val * 1.45],
             ),
-            # ── EIXO Y2: sem labels, sem grid
+            # ── EIXO Y2: sem labels, sem grid — range com folga de 180% para rótulos da linha
             yaxis2=dict(
                 title=dict(text=""),
                 showticklabels=False,
                 overlaying="y", side="right", showgrid=False,
                 zeroline=False,
-                range=[0, max_qtd * 2.0],
+                range=[0, max_qtd * 2.8],
             ),
             legend=dict(
                 bgcolor="rgba(8,15,35,0.92)",
@@ -596,7 +598,7 @@ with tab_dash:
         if not df_placa.empty:
             n = len(df_placa)
             bc = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
-            periodo = f"Data {COL_DTENTREGA}: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel else "Todos os períodos"
+            periodo = f"Data DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel else "Todos os períodos"
             st.plotly_chart(make_combo_chart(df_placa,COL_PLACA,"Valor","Qtd","",periodo,bc), use_container_width=True)
             st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 5 — crítico</span><span>🟠 6–10 — atenção</span><span>🔵 Demais</span><span>🟡 Linha = quantidade</span></div>', unsafe_allow_html=True)
         else:
@@ -1239,7 +1241,7 @@ with tab_campos:
     if s_placa2.strip() and "PLACA" in df_campos.columns: df_campos=df_campos[df_campos["PLACA"].str.contains(s_placa2.strip(),case=False,na=False)]
 
     if usar_data and dt_sel:
-        st.info(f"📅 Filtro ativo: {dt_sel.strftime('%d/%m/%Y')} ({COL_DTENTREGA})")
+        st.info(f"📅 Filtro ativo: {dt_sel.strftime('%d/%m/%Y')} (DATA)")
 
     st.markdown("---")
     st.caption(f"Exibindo {len(df_campos):,} registros".replace(",","."))
