@@ -519,44 +519,55 @@ with tab_dash:
         if bar_colors is None:
             bar_colors = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
         fig = go.Figure()
+
+        max_val = df_data[val_col].max() if len(df_data) > 0 else 1
+        max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
+
+        # ── Detecta colisão: ponto da linha amarela perto do topo da barra
+        # Normaliza ambos para escala 0-1 usando seus próprios ranges
+        # Y1 (barras): range [0, max_val*1.45]  → posição relativa = val / (max_val*1.45)
+        # Y2 (linha):  range [0, max_qtd*3.8]   → posição relativa = qtd / (max_qtd*3.8)
+        # Se as posições relativas forem próximas (diff < 0.07), adiciona <br> extra
+        qtd_labels = []
+        for val, qtd in zip(df_data[val_col], df_data[qtd_col]):
+            bar_pos  = float(val) / (max_val * 1.45) if max_val > 0 else 0
+            line_pos = float(qtd) / (max_qtd * 3.8)  if max_qtd > 0 else 0
+            diff = abs(bar_pos - line_pos)
+            if diff < 0.09:  # colisão: adiciona espaçamento extra
+                qtd_labels.append(f"<b>{qtd}</b><br> ")
+            else:
+                qtd_labels.append(f"<b>{qtd}</b>")
+
         fig.add_trace(go.Bar(
             x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
             marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
             text=[fmt_brl(v) for v in df_data[val_col]],
-            # ── FONTE MAIOR E NEGRITO nos rótulos das barras
             textposition="outside",
-            textfont=dict(size=16, color="#ffffff", family="DM Mono"),
+            textfont=dict(size=18, color="#ffffff", family="DM Mono"),
             hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
         ))
         fig.add_trace(go.Scatter(
             x=df_data[x_col], y=df_data[qtd_col], name="Qtd.",
-            # ── mode com +text para exibir o valor acima do ponto
             mode="lines+markers+text",
-            text=[f"<b>{v}</b>" for v in df_data[qtd_col]],
+            text=qtd_labels,
             textposition="top center",
-            textfont=dict(color="#fde68a", size=16, family="DM Mono"),
+            textfont=dict(color="#fde68a", size=17, family="DM Mono"),
             line=dict(color="#f59e0b", width=2.5),
             marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
-            # texttemplate with extra top padding via <br> spacer
-            texttemplate="<b>%{text}</b>",
             hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
         ))
         h = max(520, min(n*46, 780))
-        max_val = df_data[val_col].max() if len(df_data) > 0 else 1
-        max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
         fig.update_layout(
-            # ── FUNDO MAIS CLARO no gráfico
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(255,255,255,0.32)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
-            height=h, margin=dict(t=100, b=100, l=12, r=70),
+            height=h, margin=dict(t=110, b=100, l=12, r=70),
             title=dict(
                 text=f"<b>{periodo}</b>",
                 font=dict(size=17, color="#ffffff"),
                 x=0.5, xanchor="center"
             ),
             bargap=0.28,
-            # ── EIXO X: sem grid
             xaxis=dict(
                 tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
                 gridcolor="rgba(0,0,0,0)",
@@ -564,7 +575,6 @@ with tab_dash:
                 zeroline=False,
                 tickangle=-38
             ),
-            # ── EIXO Y1: sem labels, sem grid, sem título — range com folga de 45% para rótulos
             yaxis=dict(
                 title=dict(text=""),
                 showticklabels=False,
@@ -573,7 +583,6 @@ with tab_dash:
                 side="left",
                 range=[0, max_val * 1.45],
             ),
-            # ── EIXO Y2: sem labels, sem grid — range com folga de 180% para rótulos da linha
             yaxis2=dict(
                 title=dict(text=""),
                 showticklabels=False,
