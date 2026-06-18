@@ -534,9 +534,11 @@ with tab_dash:
             mode="lines+markers+text",
             text=[f"<b>{v}</b>" for v in df_data[qtd_col]],
             textposition="top center",
-            textfont=dict(color="#fde68a", size=15, family="DM Mono"),
+            textfont=dict(color="#fde68a", size=16, family="DM Mono"),
             line=dict(color="#f59e0b", width=2.5),
             marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
+            # texttemplate with extra top padding via <br> spacer
+            texttemplate="<b>%{text}</b>",
             hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
         ))
         h = max(520, min(n*46, 780))
@@ -547,7 +549,7 @@ with tab_dash:
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(255,255,255,0.32)",
             font=dict(color="#c8d8e8", family="Space Grotesk"),
-            height=h, margin=dict(t=80, b=100, l=12, r=70),
+            height=h, margin=dict(t=100, b=100, l=12, r=70),
             title=dict(
                 text=f"<b>{periodo}</b>",
                 font=dict(size=17, color="#ffffff"),
@@ -577,7 +579,7 @@ with tab_dash:
                 showticklabels=False,
                 overlaying="y", side="right", showgrid=False,
                 zeroline=False,
-                range=[0, max_qtd * 2.8],
+                range=[0, max_qtd * 3.8],
             ),
             legend=dict(
                 bgcolor="rgba(8,15,35,0.92)",
