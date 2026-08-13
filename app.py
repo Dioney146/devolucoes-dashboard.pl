@@ -373,7 +373,8 @@ def plotly_dark(fig, height=None, margin_b=40):
              yaxis=dict(tickfont=dict(color="#8fa3bd", size=12),
                         gridcolor=GRID, linecolor="rgba(120,170,225,0.10)", zeroline=False),
              legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
-                         font=dict(color="#b9c8dc", size=12)))
+                         font=dict(color="#b9c8dc", size=13),
+                         orientation="h", x=0, xanchor="left", y=1.08))
     if height:
         u["height"] = height
     fig.update_layout(**u)
@@ -857,7 +858,7 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#b9c8dc", family="Inter"),
-        height=h, margin=dict(t=76, b=118, l=14, r=20),
+        height=h, margin=dict(t=76, b=118, l=8, r=12),
         hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
                         font=dict(color="#e8f4ff", family="Inter", size=14), align="left"),
         title=(dict(text=f"<span style='font-size:14px;color:#7c8ea8'>{periodo}</span>",
@@ -866,21 +867,13 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         xaxis=dict(tickfont=dict(color="#cfe0f2", size=15, family="JetBrains Mono"),
                    gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.12)",
                    zeroline=False, tickangle=-38, automargin=True),
-        yaxis=dict(title=dict(text="Valor (R$)",
-                              font=dict(color="#8fa3bd", size=14, family="Inter")),
-                   showticklabels=True, tickprefix="R$ ", tickformat=",.0f", nticks=5,
-                   tickfont=dict(color="#8fa3bd", size=13, family="JetBrains Mono"),
-                   gridcolor=GRID, zeroline=False,
+        yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
                    side="left", range=[0, max_val * 1.45]),
-        yaxis2=dict(title=dict(text=linha_rotulo,
-                               font=dict(color=linha_texto, size=14, family="Inter")),
-                    showticklabels=True, nticks=4,
-                    tickfont=dict(color=linha_texto, size=13, family="JetBrains Mono"),
-                    overlaying="y", side="right", showgrid=False,
+        yaxis2=dict(showticklabels=False, overlaying="y", side="right", showgrid=False,
                     zeroline=False, range=[0, max_qtd * 2.9]),
         legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
                     font=dict(color="#b9c8dc", size=15),
-                    orientation="h", x=0.5, xanchor="center", y=1.08,
+                    orientation="h", x=0, xanchor="left", y=1.08,
                     itemsizing="constant", itemwidth=44, tracegroupgap=24),
     )
 
@@ -921,6 +914,7 @@ def make_bar_simple(df_data, x_col, y_col, bar_colors, title_txt="", ylabel="Qtd
                    gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
                    zeroline=False, tickangle=-38, automargin=True),
         yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
+        showlegend=False,
     )
     return fig
 
@@ -938,8 +932,7 @@ def make_hbar(df_data, x_col, y_col, color_scale, height=400, money=True):
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#b9c8dc", family="Inter"), coloraxis_showscale=False,
         height=height, margin=dict(t=8, b=26, l=6, r=96), hoverlabel=HOVER,
-        xaxis=dict(tickfont=dict(color="#7c8ea8", size=11), gridcolor=GRID,
-                   tickformat=",.0f", zeroline=False),
+        xaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
         yaxis=dict(tickfont=dict(color="#cfe0f2", size=12, family="Inter"),
                    gridcolor="rgba(0,0,0,0)", automargin=True),
     )
@@ -1065,8 +1058,7 @@ if pagina == "Dashboard":
             separators=",.",
             xaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), showgrid=False,
                        linecolor="rgba(120,170,225,0.12)"),
-            yaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), tickprefix="R$ ",
-                       gridcolor=GRID, tickformat=",.0f", zeroline=False),
+            yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
             showlegend=False,
         )
         st.plotly_chart(fig_acum, use_container_width=True)
@@ -1104,11 +1096,10 @@ if pagina == "Dashboard":
             bargap=0.34, separators=",.",
             xaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), showgrid=False,
                        linecolor="rgba(120,170,225,0.12)"),
-            yaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), tickprefix="R$ ",
-                       gridcolor=GRID, tickformat=",.0f", zeroline=False),
+            yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
             yaxis2=dict(overlaying="y", side="right", showgrid=False,
-                        tickfont=dict(size=14, color="#a78bfa"), zeroline=False),
-            legend=dict(orientation="h", x=1, xanchor="right", y=1.12,
+                        showticklabels=False, zeroline=False),
+            legend=dict(orientation="h", x=0, xanchor="left", y=1.12,
                         bgcolor="rgba(0,0,0,0)", font=dict(size=14, color="#9fb2c9"),
                         itemsizing="constant", itemwidth=40),
         )
@@ -1273,20 +1264,16 @@ if pagina == "Dashboard":
                     xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
                                showgrid=False, linecolor="rgba(120,170,225,0.12)",
                                zeroline=False, tickangle=-38, automargin=True),
-                    yaxis=dict(title=dict(text="Valor (R$)",
-                                          font=dict(color="#6d8099", size=11, family="Inter")),
-                               showticklabels=False,
+                    yaxis=dict(showticklabels=False,
                                gridcolor="rgba(120,170,225,0.055)", zeroline=False,
                                range=[0, max_val_comp * 1.55], nticks=5),
-                    yaxis2=dict(title=dict(text="Quantidade (notas)",
-                                           font=dict(color="#6d8099", size=11, family="Inter")),
-                                overlaying="y", side="right", showgrid=False, zeroline=False,
+                    yaxis2=dict(overlaying="y", side="right", showgrid=False, zeroline=False,
                                 showticklabels=False,
                                 range=[0, max_qtd_comp * 3.6], nticks=4),
                     legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
-                                font=dict(color="#8fa3bd", size=11.5),
-                                orientation="h", x=0.5, xanchor="center", y=1.11,
-                                itemsizing="constant"),
+                                font=dict(color="#b9c8dc", size=13.5),
+                                orientation="h", x=0, xanchor="left", y=1.11,
+                                itemsizing="constant", itemwidth=40),
                 )
                 # ── Rótulos das duas linhas, posicionados sem colisão ───────
                 _h_comp = max(460, min(n_comp * 52, 700))
