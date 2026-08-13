@@ -6,6 +6,16 @@
 # ABA REENTREGAS (8261 - REENTREGAS 2026):
 #   VLTOTGER, DTRANSF, NUMTRANSVENDA, CODUSUR, TOTPESO, PLACAANT, PLACAATUAL,
 #   MOTIVOTRANSF, CODMOTIVO, CLIENTE, NUMNOTA, NUMPED, PRACA, NOME (vendedor)
+#
+# ── REDESIGN VISUAL (v2) ─────────────────────────────────────────────────────
+# Nenhuma regra de negócio, cálculo, filtro, consulta ou fonte de dados foi
+# alterada. As mudanças são exclusivamente de apresentação e organização:
+#   • Menu lateral fixo (navegação por páginas em vez de abas)
+#   • Novo cabeçalho com status de sincronização, notificações e usuário
+#   • Painel de filtros compacto + limpar filtros
+#   • Cards de indicadores redesenhados
+#   • Gráficos com eixos discretos, grid quase imperceptível e tooltip moderno
+#   • Layout responsivo (desktop / notebook / tablet)
 
 import streamlit as st
 import pandas as pd
@@ -19,157 +29,336 @@ st.set_page_config(
     page_title="Gestão de Devoluções Delly's",
     page_icon="📦",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
+# ═════════════════════════════════════════════════════════════════════════════
+# DESIGN SYSTEM
+# ═════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body,.stApp{font-family:'Space Grotesk',sans-serif;color:#e2e8f0;background:#060d1f;}
-.bg-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;}
-.bg-img{position:absolute;inset:0;width:100%;height:100%;
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg-0:#04070f; --bg-1:#070c18; --bg-2:#0b1424;
+  --panel:rgba(14,23,41,0.62); --panel-solid:rgba(10,17,32,0.94);
+  --line:rgba(120,170,225,0.13); --line-strong:rgba(56,189,248,0.30);
+  --cyan:#22d3ee; --blue:#3b82f6; --sky:#38bdf8;
+  --violet:#a78bfa; --green:#34d399; --amber:#fbbf24; --red:#f87171;
+  --txt-0:#f1f6fc; --txt-1:#b9c8dc; --txt-2:#7c8ea8; --txt-3:#4e5f78;
+  --r-lg:20px; --r-md:14px; --r-sm:10px;
+}
+
+*,*::before,*::after{box-sizing:border-box;}
+html,body,.stApp{font-family:'Inter',sans-serif;color:var(--txt-1);background:var(--bg-0);}
+
+/* ── Fundo espacial discreto ─────────────────────────────────────────────── */
+.bg-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.bg-img{position:absolute;inset:0;
   background-image:url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1920&q=80');
-  background-size:cover;background-position:center center;
-  filter:blur(3px) brightness(0.38) saturate(0.6);transform:scale(1.06);}
+  background-size:cover;background-position:center;
+  filter:blur(7px) brightness(0.16) saturate(0.35);transform:scale(1.1);opacity:0.55;}
 .bg-tint{position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(4,9,20,0.70) 0%,rgba(6,14,35,0.62) 50%,rgba(4,12,28,0.72) 100%);}
-.stApp,[data-testid="stAppViewContainer"],[data-testid="stHeader"],[data-testid="stToolbar"]{background:transparent!important;}
+  background:
+    radial-gradient(1100px 620px at 18% -8%,rgba(34,211,238,0.09),transparent 62%),
+    radial-gradient(900px 560px at 88% 4%,rgba(167,139,250,0.07),transparent 60%),
+    linear-gradient(180deg,rgba(4,7,15,0.90) 0%,rgba(4,7,15,0.955) 55%,rgba(4,7,15,0.98) 100%);}
+
+.stApp,[data-testid="stAppViewContainer"],[data-testid="stHeader"]{background:transparent!important;}
 [data-testid="stAppViewContainer"]>section{background:transparent!important;}
-.main .block-container{position:relative;z-index:1;}
 #MainMenu,footer,header{visibility:hidden!important;display:none!important;}
-.stDeployButton{display:none!important;}
-[data-testid="stStatusWidget"]{display:none!important;}
-[data-testid="stToolbar"]{display:none!important;}
-[data-testid="stHeader"]{display:none!important;}
-[data-testid="stDecoration"]{display:none!important;}
-[data-testid="collapsedControl"]{display:none!important;}
+.stDeployButton,[data-testid="stStatusWidget"],[data-testid="stToolbar"],
+[data-testid="stHeader"],[data-testid="stDecoration"]{display:none!important;}
+.main .block-container{position:relative;z-index:1;padding-top:1.1rem!important;
+  padding-bottom:3rem!important;padding-left:2.1rem!important;padding-right:2.1rem!important;max-width:100%!important;}
 
-.topbar{
-  background:linear-gradient(100deg,rgba(4,10,26,0.98),rgba(7,18,44,0.98),rgba(5,14,34,0.98));
-  border-bottom:1px solid rgba(56,189,248,0.18);
-  padding:0 48px;height:88px;
-  display:flex;align-items:center;
-  margin:-6rem -1rem 0;position:sticky;top:0;z-index:999;
-  backdrop-filter:blur(28px);box-shadow:0 2px 60px rgba(0,0,0,0.75);}
-.topbar-inner{display:flex;align-items:center;gap:24px;width:100%;}
-.topbar-icon{width:52px;height:52px;background:linear-gradient(135deg,#0284c7,#1d4ed8);
-  border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;
-  box-shadow:0 0 0 1px rgba(56,189,248,0.25),0 0 24px rgba(14,165,233,0.4);}
-.topbar-divider{width:1px;height:48px;
-  background:linear-gradient(180deg,transparent,rgba(56,189,248,0.3),transparent);margin:0 4px;}
-.topbar-text{display:flex;flex-direction:column;justify-content:center;gap:4px;}
-.topbar-title{font-family:'Bebas Neue',sans-serif!important;font-size:2.15rem!important;
-  font-weight:400!important;color:#f8fafc!important;letter-spacing:0.18em;line-height:1;margin:0!important;
-  text-shadow:0 0 32px rgba(56,189,248,0.28);}
-.topbar-sub{font-family:'Space Grotesk',sans-serif;font-size:0.64rem;color:#334e6e;
-  font-weight:600;letter-spacing:0.22em;text-transform:uppercase;margin:0;}
+/* ── Menu lateral ────────────────────────────────────────────────────────── */
+section[data-testid="stSidebar"]{
+  background:linear-gradient(180deg,rgba(7,12,24,0.99),rgba(9,16,31,0.99))!important;
+  border-right:1px solid var(--line)!important;box-shadow:1px 0 40px rgba(0,0,0,0.5);}
+section[data-testid="stSidebar"] .block-container{padding-top:1.4rem!important;}
+section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"]{opacity:.35;}
+.side-brand{display:flex;align-items:center;gap:12px;padding:2px 6px 18px;
+  border-bottom:1px solid var(--line);margin-bottom:16px;}
+.side-mark{width:40px;height:40px;border-radius:12px;flex:0 0 40px;
+  background:linear-gradient(140deg,#0891b2,#2563eb);display:flex;align-items:center;
+  justify-content:center;font-size:19px;
+  box-shadow:0 0 0 1px rgba(56,189,248,0.28),0 6px 22px rgba(8,145,178,0.35);}
+.side-brand-t{font-family:'Sora',sans-serif;font-size:0.86rem;font-weight:600;
+  color:var(--txt-0);line-height:1.15;letter-spacing:.01em;}
+.side-brand-s{font-size:0.6rem;color:var(--txt-3);letter-spacing:.16em;
+  text-transform:uppercase;font-weight:600;margin-top:3px;}
+.side-cap{font-size:0.6rem;color:var(--txt-3);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;margin:14px 0 8px 8px;}
 
-.filter-bar{background:linear-gradient(135deg,rgba(10,18,42,0.93),rgba(12,22,50,0.93));
-  border:1px solid rgba(56,189,248,0.2);border-radius:18px;padding:20px 28px 16px;
-  margin:20px 0 20px;backdrop-filter:blur(14px);box-shadow:0 4px 30px rgba(0,0,0,0.35);}
-.filter-bar-title{font-family:'Bebas Neue',sans-serif;font-size:0.92rem;color:#7dd3fc;
-  letter-spacing:0.14em;margin-bottom:14px;}
+section[data-testid="stSidebar"] div[role="radiogroup"]{gap:2px!important;}
+section[data-testid="stSidebar"] div[role="radiogroup"] label{
+  width:100%;padding:9px 12px!important;border-radius:var(--r-sm)!important;
+  border:1px solid transparent!important;transition:all .18s ease;cursor:pointer;
+  background:transparent!important;margin:0!important;}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover{
+  background:rgba(56,189,248,0.06)!important;}
+section[data-testid="stSidebar"] div[role="radiogroup"] label>div:first-child{display:none!important;}
+section[data-testid="stSidebar"] div[role="radiogroup"] label p{
+  font-size:0.83rem!important;font-weight:500!important;color:var(--txt-2)!important;
+  letter-spacing:.005em;margin:0!important;}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
+  background:linear-gradient(90deg,rgba(34,211,238,0.16),rgba(37,99,235,0.07))!important;
+  border-color:rgba(56,189,248,0.30)!important;
+  box-shadow:inset 3px 0 0 var(--cyan),0 4px 18px rgba(8,145,178,0.14);}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p{
+  color:#e6fbff!important;font-weight:600!important;}
+.side-foot{margin-top:20px;padding:12px 12px;border-top:1px solid var(--line);
+  font-size:0.66rem;color:var(--txt-3);line-height:1.7;}
 
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
-.kpi-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
-.kpi-card{background:linear-gradient(135deg,rgba(13,31,60,0.9),rgba(15,36,68,0.9));
-  border:1px solid rgba(56,189,248,0.14);border-radius:18px;padding:20px 22px;
-  position:relative;overflow:hidden;transition:border-color .3s,transform .3s,box-shadow .3s;
-  backdrop-filter:blur(10px);}
-.kpi-card:hover{border-color:rgba(56,189,248,0.46);transform:translateY(-4px);
-  box-shadow:0 12px 40px rgba(14,165,233,0.16);}
-.kpi-card::before{content:'';position:absolute;top:-40px;right:-40px;width:110px;height:110px;
-  border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,0.07),transparent 70%);}
-.kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,rgba(56,189,248,0.42),transparent);}
-.kpi-icon{font-size:1.4rem;margin-bottom:10px;}
-.kpi-label{font-size:0.67rem;color:#64748b;font-weight:600;letter-spacing:0.08em;
-  text-transform:uppercase;margin-bottom:7px;}
-.kpi-value{font-family:'Bebas Neue',sans-serif;font-size:1.65rem;color:#38bdf8;line-height:1;}
-.kpi-value-green{font-family:'Bebas Neue',sans-serif;font-size:1.65rem;color:#4ade80;line-height:1;}
-.kpi-value-amber{font-family:'Bebas Neue',sans-serif;font-size:1.65rem;color:#f59e0b;line-height:1;}
-.kpi-sub{font-size:0.67rem;color:#475569;margin-top:7px;}
+/* ── Cabeçalho ───────────────────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:22px;
+  background:linear-gradient(100deg,rgba(9,15,29,0.90),rgba(11,20,38,0.86));
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:16px 24px;margin-bottom:16px;
+  backdrop-filter:blur(20px);box-shadow:0 10px 44px rgba(0,0,0,0.42);}
+.tb-left{display:flex;align-items:center;gap:16px;min-width:0;}
+.tb-icon{width:46px;height:46px;flex:0 0 46px;border-radius:13px;
+  background:linear-gradient(140deg,#0e7490,#1d4ed8);display:flex;align-items:center;
+  justify-content:center;font-size:21px;
+  box-shadow:0 0 0 1px rgba(56,189,248,0.25),0 8px 26px rgba(14,165,233,0.28);}
+.tb-title{font-family:'Sora',sans-serif;font-size:1.16rem;font-weight:600;
+  color:var(--txt-0);letter-spacing:.015em;line-height:1.2;margin:0;}
+.tb-sub{font-size:0.63rem;color:var(--txt-3);font-weight:600;letter-spacing:.19em;
+  text-transform:uppercase;margin:5px 0 0;}
+.tb-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.tb-chip{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;
+  background:rgba(255,255,255,0.035);border:1px solid var(--line);
+  font-size:0.72rem;color:var(--txt-1);font-weight:500;white-space:nowrap;}
+.tb-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 9px rgba(52,211,153,0.85);}
+.tb-chip.bell{position:relative;padding:8px 12px;font-size:0.85rem;}
+.tb-badge{position:absolute;top:2px;right:4px;min-width:16px;height:16px;padding:0 4px;
+  border-radius:999px;background:var(--red);color:#2a0606;font-size:0.6rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-1);}
+.tb-user{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;border-radius:999px;
+  background:rgba(255,255,255,0.035);border:1px solid var(--line);}
+.tb-av{width:31px;height:31px;border-radius:50%;background:linear-gradient(140deg,#22d3ee,#6366f1);
+  display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;color:#04121a;}
+.tb-un{font-size:0.75rem;color:var(--txt-0);font-weight:600;line-height:1.1;}
+.tb-ur{font-size:0.62rem;color:var(--txt-3);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
 
-.sec-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
-.sec-header .bar{width:3px;height:24px;background:linear-gradient(180deg,#38bdf8,#2563eb);
-  border-radius:2px;box-shadow:0 0 10px rgba(56,189,248,0.5);}
-.sec-header h3{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;color:#e2e8f0;margin:0;letter-spacing:0.1em;}
+/* ── Painéis / cards ─────────────────────────────────────────────────────── */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:18px 20px 8px;backdrop-filter:blur(16px);
+  box-shadow:0 8px 34px rgba(0,0,0,0.3);margin-bottom:18px;}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin-bottom:14px;}
+.panel-t{display:flex;align-items:center;gap:11px;}
+.panel-t .bar{width:3px;height:19px;border-radius:2px;
+  background:linear-gradient(180deg,var(--cyan),var(--blue));box-shadow:0 0 11px rgba(34,211,238,0.5);}
+.panel-t h3{font-family:'Sora',sans-serif;font-size:0.9rem;font-weight:600;color:var(--txt-0);
+  margin:0;letter-spacing:.01em;}
+.panel-tag{font-size:0.64rem;color:var(--txt-3);letter-spacing:.13em;text-transform:uppercase;
+  font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(255,255,255,0.025);white-space:nowrap;}
 
-.stTabs [data-baseweb="tab-list"]{background:rgba(8,15,35,0.87)!important;
-  border-radius:16px!important;padding:5px!important;gap:4px!important;
-  border:1px solid rgba(56,189,248,0.17)!important;margin-bottom:6px;backdrop-filter:blur(10px);}
-.stTabs [data-baseweb="tab"]{background:transparent!important;border-radius:12px!important;
-  color:#64748b!important;font-weight:600!important;font-size:0.84rem!important;
-  padding:10px 24px!important;transition:all .25s!important;border:none!important;}
-.stTabs [aria-selected="true"]{background:linear-gradient(135deg,#0c4a6e,#1e3a8a)!important;
-  color:#e0f2fe!important;box-shadow:0 2px 20px rgba(14,165,233,0.3)!important;}
-.stTabs [data-baseweb="tab-panel"]{padding-top:26px!important;}
+/* ── KPIs ────────────────────────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:20px;}
+.kpi{position:relative;overflow:hidden;border-radius:var(--r-lg);padding:18px 19px 16px;
+  background:linear-gradient(150deg,rgba(16,26,46,0.82),rgba(10,17,32,0.72));
+  border:1px solid var(--line);backdrop-filter:blur(14px);
+  transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;}
+.kpi:hover{transform:translateY(-3px);border-color:var(--line-strong);
+  box-shadow:0 14px 40px rgba(8,145,178,0.14);}
+.kpi::after{content:'';position:absolute;left:18px;right:18px;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--acc,var(--cyan)),transparent);opacity:.55;}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;}
+.kpi-ico{width:31px;height:31px;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;font-size:0.92rem;background:rgba(255,255,255,0.045);
+  border:1px solid var(--line);}
+.kpi-delta{font-family:'JetBrains Mono',monospace;font-size:0.66rem;font-weight:700;
+  padding:3px 8px;border-radius:999px;letter-spacing:.02em;}
+.kpi-up{color:#fecaca;background:rgba(248,113,113,0.14);border:1px solid rgba(248,113,113,0.28);}
+.kpi-down{color:#bbf7d0;background:rgba(52,211,153,0.13);border:1px solid rgba(52,211,153,0.28);}
+.kpi-flat{color:var(--txt-2);background:rgba(255,255,255,0.04);border:1px solid var(--line);}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:1.62rem;font-weight:700;
+  color:var(--acc,var(--cyan));line-height:1.05;letter-spacing:-0.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kpi-lab{font-size:0.63rem;color:var(--txt-2);font-weight:600;letter-spacing:.13em;
+  text-transform:uppercase;margin:9px 0 4px;}
+.kpi-sub{font-size:0.66rem;color:var(--txt-3);}
 
-.stTextInput input,.stDateInput input{background:rgba(8,15,35,0.87)!important;
-  border-color:rgba(56,189,248,0.22)!important;border-radius:10px!important;
-  color:#e2e8f0!important;font-family:'Space Grotesk',sans-serif!important;}
+/* ── Filtros ─────────────────────────────────────────────────────────────── */
+.filters{background:linear-gradient(120deg,rgba(12,20,38,0.80),rgba(9,15,29,0.74));
+  border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 20px 4px;
+  margin-bottom:18px;backdrop-filter:blur(16px);}
+.filters-h{display:flex;align-items:center;gap:9px;font-size:0.63rem;color:var(--txt-2);
+  letter-spacing:.17em;text-transform:uppercase;font-weight:700;margin-bottom:6px;}
+.filters-h .pip{width:6px;height:6px;border-radius:50%;background:var(--cyan);
+  box-shadow:0 0 9px rgba(34,211,238,0.8);}
+
+label,.stSelectbox label,.stMultiSelect label,.stTextInput label,.stRadio label p{
+  color:var(--txt-2)!important;font-size:0.68rem!important;font-weight:600!important;
+  letter-spacing:.11em!important;text-transform:uppercase!important;}
+.stTextInput input,.stDateInput input{background:rgba(255,255,255,0.035)!important;
+  border:1px solid var(--line)!important;border-radius:var(--r-sm)!important;
+  color:var(--txt-0)!important;font-family:'Inter',sans-serif!important;font-size:0.85rem!important;}
+.stTextInput input:focus{border-color:var(--line-strong)!important;
+  box-shadow:0 0 0 3px rgba(34,211,238,0.10)!important;}
 .stSelectbox div[data-baseweb="select"]>div,.stMultiSelect div[data-baseweb="select"]>div{
-  background:rgba(8,15,35,0.87)!important;border-color:rgba(56,189,248,0.22)!important;
-  border-radius:10px!important;color:#e2e8f0!important;}
-.stMultiSelect span[data-baseweb="tag"]{background:rgba(14,165,233,0.18)!important;
-  color:#38bdf8!important;border-radius:6px!important;}
-label,.stSelectbox label,.stMultiSelect label,.stTextInput label{
-  color:#94a3b8!important;font-size:0.76rem!important;font-weight:600!important;
-  letter-spacing:.06em!important;text-transform:uppercase!important;}
-.stButton>button{background:linear-gradient(135deg,#0c4a6e,#1e3a8a)!important;
-  color:#e0f2fe!important;border:1px solid rgba(56,189,248,0.3)!important;
-  border-radius:10px!important;font-weight:600!important;font-size:0.84rem!important;
-  padding:10px 24px!important;transition:all .25s!important;}
-.stButton>button:hover{background:linear-gradient(135deg,#1e3a8a,#1d4ed8)!important;
-  border-color:rgba(56,189,248,0.62)!important;transform:translateY(-2px)!important;}
-.stDownloadButton>button{background:rgba(34,197,94,0.1)!important;color:#4ade80!important;
-  border:1px solid rgba(34,197,94,0.3)!important;border-radius:10px!important;font-weight:600!important;}
-hr{border-color:rgba(56,189,248,0.08)!important;margin:22px 0!important;}
-::-webkit-scrollbar{width:5px;height:5px;}
-::-webkit-scrollbar-track{background:rgba(6,13,31,0.5);}
-::-webkit-scrollbar-thumb{background:#1e3a8a;border-radius:3px;}
-.stCaption{color:#475569!important;font-size:.72rem!important;}
+  background:rgba(255,255,255,0.035)!important;border:1px solid var(--line)!important;
+  border-radius:var(--r-sm)!important;color:var(--txt-0)!important;}
+.stMultiSelect span[data-baseweb="tag"]{background:rgba(34,211,238,0.15)!important;
+  color:#a5f3fc!important;border-radius:6px!important;}
+div[data-baseweb="popover"] ul{background:var(--panel-solid)!important;
+  border:1px solid var(--line)!important;}
+
+.stButton>button{background:rgba(255,255,255,0.04)!important;color:var(--txt-1)!important;
+  border:1px solid var(--line)!important;border-radius:var(--r-sm)!important;
+  font-weight:600!important;font-size:0.8rem!important;padding:9px 18px!important;
+  transition:all .2s ease!important;}
+.stButton>button:hover{border-color:var(--line-strong)!important;color:var(--txt-0)!important;
+  background:rgba(56,189,248,0.09)!important;}
+.stButton>button[kind="primary"]{
+  background:linear-gradient(120deg,#0891b2,#2563eb)!important;color:#ecfeff!important;
+  border:1px solid rgba(56,189,248,0.45)!important;
+  box-shadow:0 6px 22px rgba(8,145,178,0.34)!important;}
+.stButton>button[kind="primary"]:hover{transform:translateY(-1px);
+  box-shadow:0 10px 30px rgba(8,145,178,0.46)!important;}
+.stDownloadButton>button{background:rgba(52,211,153,0.09)!important;color:#6ee7b7!important;
+  border:1px solid rgba(52,211,153,0.28)!important;border-radius:var(--r-sm)!important;
+  font-weight:600!important;}
+
+/* ── Tabelas ─────────────────────────────────────────────────────────────── */
+.tbl-wrap{background:rgba(6,11,22,0.86);border:1px solid var(--line);
+  border-radius:var(--r-md);overflow:auto;max-height:540px;}
+.tbl-wrap table{width:100%;border-collapse:collapse;}
+.tbl-wrap th{position:sticky;top:0;background:rgba(11,20,38,0.99);color:var(--sky);
+  font-size:0.68rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  text-align:left;padding:11px 14px;white-space:nowrap;border-bottom:1px solid var(--line-strong);}
+.tbl-wrap td{padding:9px 14px;color:var(--txt-1);font-size:0.8rem;white-space:nowrap;
+  border-bottom:1px solid rgba(120,170,225,0.06);}
+.tbl-wrap tr:hover td{background:rgba(56,189,248,0.05);}
+.num{font-family:'JetBrains Mono',monospace;font-weight:600;}
+
+/* ── Diversos ────────────────────────────────────────────────────────────── */
+hr{border-color:var(--line)!important;margin:20px 0!important;}
+.stAlert{background:rgba(12,22,42,0.8)!important;border:1px solid var(--line)!important;
+  border-radius:var(--r-md)!important;}
+.stCaption,[data-testid="stCaptionContainer"]{color:var(--txt-3)!important;font-size:.72rem!important;}
+.stTabs [data-baseweb="tab-list"]{background:rgba(9,16,31,0.8)!important;border-radius:var(--r-md)!important;
+  padding:4px!important;gap:4px!important;border:1px solid var(--line)!important;}
+.stTabs [data-baseweb="tab"]{background:transparent!important;border-radius:var(--r-sm)!important;
+  color:var(--txt-2)!important;font-weight:600!important;font-size:0.8rem!important;}
+.stTabs [aria-selected="true"]{background:rgba(34,211,238,0.13)!important;color:#e6fbff!important;}
+.streamlit-expanderHeader,details summary{color:var(--txt-2)!important;font-size:0.8rem!important;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(56,189,248,0.20);border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(56,189,248,0.38);}
+
+/* ── Responsivo ──────────────────────────────────────────────────────────── */
+@media (max-width:1500px){ .kpi-val{font-size:1.42rem;} }
+@media (max-width:1200px){
+  .kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .main .block-container{padding-left:1.2rem!important;padding-right:1.2rem!important;}
+  .tb-title{font-size:1.02rem;}
+}
+@media (max-width:820px){
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .topbar{flex-direction:column;align-items:flex-start;gap:14px;}
+  .tb-right{justify-content:flex-start;}
+}
+@media (prefers-reduced-motion:reduce){
+  .kpi,.stButton>button{transition:none!important;}
+  .kpi:hover{transform:none;}
+}
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown('<div class="bg-overlay"><div class="bg-img"></div><div class="bg-tint"></div></div>',
+            unsafe_allow_html=True)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# HELPERS DE FORMATAÇÃO E GRÁFICOS  (regras de cálculo inalteradas)
+# ═════════════════════════════════════════════════════════════════════════════
 def fmt_brl(v):
     try:
-        return f"R$ {float(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
+        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except:
         return "R$ 0,00"
+
 
 def fmt_brl0(v):
     """Formata valor monetário em R$ SEM casas decimais (arredondado), usado nos gráficos."""
     try:
-        return f"R$ {round(float(v)):,}".replace(",",".")
+        return f"R$ {round(float(v)):,}".replace(",", ".")
     except:
         return "R$ 0"
 
+
+HOVER = dict(bgcolor="rgba(8,14,28,0.96)", bordercolor="rgba(56,189,248,0.35)",
+             font=dict(color="#e8f4ff", family="Inter", size=12))
+
+GRID = "rgba(120,170,225,0.07)"
+
+
 def plotly_dark(fig, height=None, margin_b=40):
-    u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.32)",
-             font=dict(color="#c8d8e8",family="Space Grotesk"),coloraxis_showscale=False,
-             margin=dict(t=24,b=margin_b,l=8,r=12),
-             xaxis=dict(tickfont=dict(color="#d0dce8",size=14,family="Space Grotesk"),
-                        gridcolor="rgba(255,255,255,0.10)",linecolor="rgba(255,255,255,0.12)"),
-             yaxis=dict(tickfont=dict(color="#94a3b8",size=13),
-                        gridcolor="rgba(255,255,255,0.10)",linecolor="rgba(255,255,255,0.12)"),
-             legend=dict(bgcolor="rgba(8,15,35,0.9)",bordercolor="rgba(56,189,248,0.15)",
-                         borderwidth=1,font=dict(color="#c8d8e8",size=12)))
-    if height: u["height"] = height
+    u = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+             font=dict(color="#b9c8dc", family="Inter"), coloraxis_showscale=False,
+             margin=dict(t=18, b=margin_b, l=8, r=12),
+             hoverlabel=HOVER,
+             xaxis=dict(tickfont=dict(color="#8fa3bd", size=12, family="Inter"),
+                        gridcolor=GRID, linecolor="rgba(120,170,225,0.10)", zeroline=False),
+             yaxis=dict(tickfont=dict(color="#8fa3bd", size=12),
+                        gridcolor=GRID, linecolor="rgba(120,170,225,0.10)", zeroline=False),
+             legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
+                         font=dict(color="#b9c8dc", size=12)))
+    if height:
+        u["height"] = height
     fig.update_layout(**u)
     return fig
 
-BLUE  = ["#0c4a6e","#0369a1","#0ea5e9","#7dd3fc","#bae6fd"]
-RED   = ["#7f1d1d","#b91c1c","#ef4444","#fca5a5"]
-GREEN = ["#14532d","#15803d","#22c55e","#86efac","#bbf7d0"]
-MIXED = ["#0ea5e9","#22c55e","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","#f97316"]
 
-# ── Google Sheets ─────────────────────────────────────────────────────────────
-SHEET_ID       = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
-GSHEETS_URL    = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&id={SHEET_ID}"
+BLUE = ["#0c4a6e", "#0369a1", "#0ea5e9", "#7dd3fc", "#bae6fd"]
+RED = ["#7f1d1d", "#b91c1c", "#ef4444", "#fca5a5"]
+GREEN = ["#14532d", "#15803d", "#22c55e", "#86efac", "#bbf7d0"]
+MIXED = ["#22d3ee", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#f472b6", "#2dd4bf", "#fb923c"]
 
-# URLs alternativas para a aba de reentregas (diferentes formas de referenciar)
+C_CRIT, C_WARN, C_BASE, C_OK = "#f87171", "#fb923c", "#38bdf8", "#34d399"
+
+
+def ramp(n, top=5, mid=10, base=C_BASE):
+    """Escala de cor por criticidade (mesma lógica de destaque do layout original)."""
+    return [C_CRIT if i < top else C_WARN if i < mid else base for i in range(n)]
+
+
+def panel_open(title, tag=None, icon=""):
+    tg = f'<span class="panel-tag">{tag}</span>' if tag else ""
+    st.markdown(
+        f'<div class="panel"><div class="panel-h"><div class="panel-t"><div class="bar"></div>'
+        f'<h3>{icon} {title}</h3></div>{tg}</div>', unsafe_allow_html=True)
+
+
+def panel_close():
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def html_table(df_in, accent="#38bdf8", max_rows=500, min_width=900):
+    heads = "".join([f"<th>{c}</th>" for c in df_in.columns])
+    rws = ""
+    for _, row in df_in.head(max_rows).iterrows():
+        cells = "".join([f"<td>{v}</td>" for v in row.values])
+        rws += f"<tr>{cells}</tr>"
+    st.markdown(
+        f'<div class="tbl-wrap"><table style="min-width:{min_width}px;">'
+        f'<thead><tr>{heads}</tr></thead><tbody>{rws}</tbody></table></div>',
+        unsafe_allow_html=True)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# FONTE DE DADOS  (inalterada)
+# ═════════════════════════════════════════════════════════════════════════════
+SHEET_ID = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
+GSHEETS_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&id={SHEET_ID}"
+
 REENTREGAS_URLS = [
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261+-+REENTREGAS+2026",
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=8261%20-%20REENTREGAS%202026",
@@ -179,11 +368,13 @@ REENTREGAS_URLS = [
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=2",
 ]
 
+
 @st.cache_data(ttl=60)
 def load_data(url):
-    r = requests.get(url, timeout=30, headers={"User-Agent":"Mozilla/5.0"})
+    r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
     r.raise_for_status()
     return pd.read_csv(io.StringIO(r.text))
+
 
 @st.cache_data(ttl=60)
 def load_reentregas():
@@ -191,12 +382,11 @@ def load_reentregas():
     erros = []
     for url in REENTREGAS_URLS:
         try:
-            r = requests.get(url, timeout=30, headers={"User-Agent":"Mozilla/5.0"})
+            r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
             df = pd.read_csv(io.StringIO(r.text))
-            # Verifica se é a aba certa: deve ter pelo menos DTRANSF ou MOTIVOTRANSF
-            cols_up = [str(c).strip().upper().replace(" ","_") for c in df.columns]
-            if any(c in cols_up for c in ["DTRANSF","MOTIVOTRANSF","NUMNOTA","VLTOTGER"]):
+            cols_up = [str(c).strip().upper().replace(" ", "_") for c in df.columns]
+            if any(c in cols_up for c in ["DTRANSF", "MOTIVOTRANSF", "NUMNOTA", "VLTOTGER"]):
                 return df, url, None
             else:
                 erros.append(f"URL ok mas colunas não reconhecidas: {cols_up[:6]}")
@@ -204,23 +394,23 @@ def load_reentregas():
             erros.append(f"{url.split('sheet=')[-1][:40]} → {str(e)[:80]}")
     return None, None, erros
 
+
 def parse_brl(s):
-    s = str(s).replace("R$","").strip()
+    s = str(s).replace("R$", "").strip()
     if "," in s and "." in s:
-        s = s.replace(".","").replace(",",".")
+        s = s.replace(".", "").replace(",", ".")
     elif "," in s:
-        s = s.replace(",",".")
+        s = s.replace(",", ".")
     return pd.to_numeric(s, errors="coerce")
 
-# ── Carrega devoluções ────────────────────────────────────────────────────────
-with st.spinner("⏳ Carregando dados..."):
+
+with st.spinner("Carregando dados..."):
     try:
         df_raw = load_data(GSHEETS_URL)
     except Exception as e:
-        st.error(f"❌ Erro ao carregar devoluções: {e}")
+        st.error(f"Não foi possível carregar as devoluções: {e}")
         st.stop()
 
-# ── Carrega reentregas ────────────────────────────────────────────────────────
 df_reent_raw = None
 reent_load_error = None
 reent_url_usada = None
@@ -231,9 +421,10 @@ try:
 except Exception as e:
     reent_load_error = str(e)
 
-# ── Normaliza colunas devoluções ──────────────────────────────────────────────
-df_raw.columns = [str(c).strip().upper().replace(" ","_") for c in df_raw.columns]
+# ── Normaliza colunas devoluções ────────────────────────────────────────────
+df_raw.columns = [str(c).strip().upper().replace(" ", "_") for c in df_raw.columns]
 actual_cols = list(df_raw.columns)
+
 
 def get_col(df, names):
     for n in names:
@@ -241,23 +432,24 @@ def get_col(df, names):
             return n
     return None
 
-VALOR_COL     = get_col(df_raw, ["VLTOTAL","VLT","VL_TOTAL","VALOR_LIQUIDO","VALOR","TOTAL"]) or "VLTOTAL"
-COL_PLACA     = get_col(df_raw, ["PLACA"])
-COL_MOTIVO    = get_col(df_raw, ["MOTIVO","MOTIVO_DEVOLUCAO","MOTIVO_DEV"])
-COL_CLIENTE   = get_col(df_raw, ["CLIENTE","NOME_CLIENTE","RAZAO_SOCIAL"])
-COL_VENDEDOR  = get_col(df_raw, ["NOMERCA","VENDEDOR","NOME_VENDEDOR"])
-COL_DEVOLUCION= get_col(df_raw, ["NOMEFUNC","DEVOLUCIONISTA","FUNCIONARIO"])
-COL_MOTORISTA = get_col(df_raw, ["MOTORISTA","ENTREGADOR"])
-COL_DESTINO   = get_col(df_raw, ["DESTINO","NOME_CIDADE","CIDADE","MUNICIPIO"])
-COL_NF_VENDA  = get_col(df_raw, ["NOTA_VENDA","NF_VENDA","NF_SAIDA","NOTA_SAIDA","NOTA_FISCAL"])
-COL_NOTA_DEV  = get_col(df_raw, ["NOTA_DEVOLUCAO","NF_DEVOLUCAO"])
-COL_NUMCAR    = get_col(df_raw, ["NUMCAR","NUM_CARREGAMENTO","CARREGAMENTO"])
-COL_CODCLI    = get_col(df_raw, ["CODCLI","COD_CLI","CLI"])
-COL_SUPERVISOR= get_col(df_raw, ["SUPERVISOR","AM","GERENTE"])
-COL_PRACA     = get_col(df_raw, ["PRACA"])
-COL_TIPO_MERC = get_col(df_raw, ["TIPO_MERCADO","CANAL","SEGMENTO"])
-COL_DTSAIDA   = get_col(df_raw, ["DTSAIDA","DATA_DEVOLUCAO","DATA","DT_DEVOLUCAO"])
-COL_DTENTREGA = get_col(df_raw, ["DTENT","DTENTREGA","DATA_ENTREGA","DT_ENTREGA"])
+
+VALOR_COL = get_col(df_raw, ["VLTOTAL", "VLT", "VL_TOTAL", "VALOR_LIQUIDO", "VALOR", "TOTAL"]) or "VLTOTAL"
+COL_PLACA = get_col(df_raw, ["PLACA"])
+COL_MOTIVO = get_col(df_raw, ["MOTIVO", "MOTIVO_DEVOLUCAO", "MOTIVO_DEV"])
+COL_CLIENTE = get_col(df_raw, ["CLIENTE", "NOME_CLIENTE", "RAZAO_SOCIAL"])
+COL_VENDEDOR = get_col(df_raw, ["NOMERCA", "VENDEDOR", "NOME_VENDEDOR"])
+COL_DEVOLUCION = get_col(df_raw, ["NOMEFUNC", "DEVOLUCIONISTA", "FUNCIONARIO"])
+COL_MOTORISTA = get_col(df_raw, ["MOTORISTA", "ENTREGADOR"])
+COL_DESTINO = get_col(df_raw, ["DESTINO", "NOME_CIDADE", "CIDADE", "MUNICIPIO"])
+COL_NF_VENDA = get_col(df_raw, ["NOTA_VENDA", "NF_VENDA", "NF_SAIDA", "NOTA_SAIDA", "NOTA_FISCAL"])
+COL_NOTA_DEV = get_col(df_raw, ["NOTA_DEVOLUCAO", "NF_DEVOLUCAO"])
+COL_NUMCAR = get_col(df_raw, ["NUMCAR", "NUM_CARREGAMENTO", "CARREGAMENTO"])
+COL_CODCLI = get_col(df_raw, ["CODCLI", "COD_CLI", "CLI"])
+COL_SUPERVISOR = get_col(df_raw, ["SUPERVISOR", "AM", "GERENTE"])
+COL_PRACA = get_col(df_raw, ["PRACA"])
+COL_TIPO_MERC = get_col(df_raw, ["TIPO_MERCADO", "CANAL", "SEGMENTO"])
+COL_DTSAIDA = get_col(df_raw, ["DTSAIDA", "DATA_DEVOLUCAO", "DATA", "DT_DEVOLUCAO"])
+COL_DTENTREGA = get_col(df_raw, ["DTENT", "DTENTREGA", "DATA_ENTREGA", "DT_ENTREGA"])
 
 if VALOR_COL not in df_raw.columns:
     df_raw[VALOR_COL] = 0.0
@@ -271,47 +463,45 @@ if COL_DTENTREGA:
     df_raw["_DTENTREGA_DT"] = pd.to_datetime(df_raw[COL_DTENTREGA], dayfirst=True, errors="coerce")
     mask_nat = df_raw["_DTENTREGA_DT"].isna() & (df_raw[COL_DTENTREGA] != "")
     if mask_nat.any():
-        df_raw.loc[mask_nat,"_DTENTREGA_DT"] = pd.to_datetime(
+        df_raw.loc[mask_nat, "_DTENTREGA_DT"] = pd.to_datetime(
             df_raw.loc[mask_nat, COL_DTENTREGA], format="%Y-%m-%d", errors="coerce")
 else:
     df_raw["_DTENTREGA_DT"] = pd.NaT
 
-# ── Normaliza colunas reentregas ──────────────────────────────────────────────
+# ── Normaliza colunas reentregas ────────────────────────────────────────────
 REENT_COLS_MAP = {
-    "NUMNOTA":           ["NUMNOTA"],
-    "DTFAT":             ["DTFAT"],
-    "SERIE":             ["SERIE"],
-    "ESPECIE":           ["ESPECIE"],
-    "DTSAIDA":           ["DTSAIDA"],
-    "VLTOTGER":          ["VLTOTGER","VLTOT","VLTOTAL"],
-    "TOTPESO":           ["TOTPESO","PESO"],
-    "NUMTRANSVENDA":     ["NUMTRANSVENDA","NUMTRANS"],
-    "NUMCARANTERIOR":    ["NUMCARANTERIOR"],
-    "PLACAANT":          ["ANTERIOR","PLACAANT","PLACA_ANT","PLACAANTERIOR"],
-    "COD_MOT_ANTERIOR":  ["COD_MOT_ANTERIOR"],
+    "NUMNOTA": ["NUMNOTA"],
+    "DTFAT": ["DTFAT"],
+    "SERIE": ["SERIE"],
+    "ESPECIE": ["ESPECIE"],
+    "DTSAIDA": ["DTSAIDA"],
+    "VLTOTGER": ["VLTOTGER", "VLTOT", "VLTOTAL"],
+    "TOTPESO": ["TOTPESO", "PESO"],
+    "NUMTRANSVENDA": ["NUMTRANSVENDA", "NUMTRANS"],
+    "NUMCARANTERIOR": ["NUMCARANTERIOR"],
+    "PLACAANT": ["ANTERIOR", "PLACAANT", "PLACA_ANT", "PLACAANTERIOR"],
+    "COD_MOT_ANTERIOR": ["COD_MOT_ANTERIOR"],
     "NOME_MOT_ANTERIOR": ["NOME_MOT_ANTERIOR"],
-    "COD_AJU_ANTERIOR":  ["COD_AJU_ANTERIOR"],
+    "COD_AJU_ANTERIOR": ["COD_AJU_ANTERIOR"],
     "NOME_AJU_ANTERIOR": ["NOME_AJU_ANTERIOR"],
-    "NUMCARATUAL":       ["NUMCARATUAL"],
-    # planilha: "PLACA ATUAL" → após normalização → "PLACA_ATUAL"
-    "PLACAATUAL":        ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"],
-    "COD_MOT_ATUAL":     ["COD_MOT_ATUAL"],
-    "NOME_MOT_ATUAL":    ["NOME_MOT_ATUAL"],
-    "COD_AJU_ATUAL":     ["COD_AJU_ATUAL"],
-    "NOME_AJU_ATUAL":    ["NOME_AJU_ATUAL"],
-    # planilha: "DTRANSF" → após normalização → "DTRANSF"
-    "DATATRANSF":        ["DTRANSF","DATATRANSF","DATA_TRANSF"],
-    "CODMOTIVO":         ["CODMOTIVO"],
-    "MOTIVOTRANSF":      ["MOTIVOTRANSF","MOTIVO_TRANSF"],
-    "CODCLI":            ["CODCLI"],
-    "CLIENTE":           ["CLIENTE"],
-    "BAIRROENT":         ["BAIRROENT"],
-    "CODPRACA":          ["CODPRACA"],
-    "PRACA":             ["PRACA"],
-    "ROTA":              ["ROTA"],
-    "NUMPED":            ["NUMPED"],
-    "CODUSU":            ["CODUSUR","CODUSU"],
-    "NOME":              ["NOME","RNOME"],
+    "NUMCARATUAL": ["NUMCARATUAL"],
+    "PLACAATUAL": ["PLACA_ATUAL", "PLACAATUAL", "PLACA_ATU"],
+    "COD_MOT_ATUAL": ["COD_MOT_ATUAL"],
+    "NOME_MOT_ATUAL": ["NOME_MOT_ATUAL"],
+    "COD_AJU_ATUAL": ["COD_AJU_ATUAL"],
+    "NOME_AJU_ATUAL": ["NOME_AJU_ATUAL"],
+    "DATATRANSF": ["DTRANSF", "DATATRANSF", "DATA_TRANSF"],
+    "CODMOTIVO": ["CODMOTIVO"],
+    "MOTIVOTRANSF": ["MOTIVOTRANSF", "MOTIVO_TRANSF"],
+    "CODCLI": ["CODCLI"],
+    "CLIENTE": ["CLIENTE"],
+    "BAIRROENT": ["BAIRROENT"],
+    "CODPRACA": ["CODPRACA"],
+    "PRACA": ["PRACA"],
+    "ROTA": ["ROTA"],
+    "NUMPED": ["NUMPED"],
+    "CODUSU": ["CODUSUR", "CODUSU"],
+    "NOME": ["NOME", "RNOME"],
 }
 
 df_reent = None
@@ -319,18 +509,18 @@ reent_cols = {}
 REENT_VALOR_COL = "_VALOR_REENT"
 
 if df_reent_raw is not None:
-    df_reent_raw.columns = [str(c).strip().upper().replace(" ","_") for c in df_reent_raw.columns]
+    df_reent_raw.columns = [str(c).strip().upper().replace(" ", "_") for c in df_reent_raw.columns]
 
     def get_col_reent(alts):
         for n in alts:
-            if n.strip().upper().replace(" ","_") in df_reent_raw.columns:
-                return n.strip().upper().replace(" ","_")
+            if n.strip().upper().replace(" ", "_") in df_reent_raw.columns:
+                return n.strip().upper().replace(" ", "_")
         return None
 
     for canonical, alts in REENT_COLS_MAP.items():
         reent_cols[canonical] = get_col_reent(alts)
 
-    rv = get_col_reent(["VLTOTGER","VLTOT","VLTOTAL","VALOR","TOTAL"])
+    rv = get_col_reent(["VLTOTGER", "VLTOT", "VLTOTAL", "VALOR", "TOTAL"])
     if rv:
         REENT_VALOR_COL = rv
         df_reent_raw[rv] = df_reent_raw[rv].apply(parse_brl).fillna(0)
@@ -342,9 +532,8 @@ if df_reent_raw is not None:
             df_reent_raw[col] = df_reent_raw[col].fillna("").astype(str).str.strip()
 
     dt_col_r = reent_cols.get("DATATRANSF")
-    # fallback: procurar DTRANSF diretamente nas colunas se o mapeamento falhou
     if not dt_col_r:
-        for _c in ["DTRANSF","DATATRANSF","DATA_TRANSF"]:
+        for _c in ["DTRANSF", "DATATRANSF", "DATA_TRANSF"]:
             if _c in df_reent_raw.columns:
                 dt_col_r = _c
                 reent_cols["DATATRANSF"] = _c
@@ -353,77 +542,139 @@ if df_reent_raw is not None:
         df_reent_raw["_DATATRANSF_DT"] = pd.to_datetime(df_reent_raw[dt_col_r], dayfirst=True, errors="coerce")
         m2 = df_reent_raw["_DATATRANSF_DT"].isna() & (df_reent_raw[dt_col_r] != "")
         if m2.any():
-            df_reent_raw.loc[m2,"_DATATRANSF_DT"] = pd.to_datetime(
+            df_reent_raw.loc[m2, "_DATATRANSF_DT"] = pd.to_datetime(
                 df_reent_raw.loc[m2, dt_col_r], format="%Y-%m-%d", errors="coerce")
     else:
         df_reent_raw["_DATATRANSF_DT"] = pd.NaT
 
     df_reent = df_reent_raw.copy()
 
-# ── Background + Topbar ───────────────────────────────────────────────────────
-st.markdown("""
-<div class="bg-overlay">
-  <div class="bg-img"></div>
-  <div class="bg-tint"></div>
-</div>
-""", unsafe_allow_html=True)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# CABEÇALHO
+# ═════════════════════════════════════════════════════════════════════════════
+_sync = datetime.now().strftime("%d/%m/%Y às %H:%M")
+_n_reent = len(df_reent) if df_reent is not None else 0
 
 st.markdown(f"""
 <div class="topbar">
-  <div class="topbar-inner">
-    <div class="topbar-icon">📦</div>
-    <div class="topbar-divider"></div>
-    <div class="topbar-text">
-      <p class="topbar-title">GESTÃO DE DEVOLUÇÕES DELLY'S</p>
-      <p class="topbar-sub">Módulo de Análise e Controle Operacional</p>
+  <div class="tb-left">
+    <div class="tb-icon">📦</div>
+    <div>
+      <p class="tb-title">GESTÃO DE DEVOLUÇÕES DELLY'S</p>
+      <p class="tb-sub">Módulo de análise e controle operacional</p>
     </div>
+  </div>
+  <div class="tb-right">
+    <div class="tb-chip"><span class="dot"></span> Sincronizado {_sync}</div>
+    <div class="tb-chip bell">🔔<span class="tb-badge">{min(_n_reent, 99)}</span></div>
+    <div class="tb-user">
+      <div class="tb-av">DL</div>
+      <div>
+        <div class="tb-un">Delly's Logística</div>
+        <div class="tb-ur">Roteirização</div>
+      </div>
+    </div>
+    <div class="tb-chip">⚙️ Perfil</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Filtros globais (devoluções) ──────────────────────────────────────────────
-st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙️ FILTROS GLOBAIS — DEVOLUÇÕES</div>', unsafe_allow_html=True)
-fc1, fc2, fc3, fc4 = st.columns([3, 2, 2, 1], gap="medium")
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MENU LATERAL
+# ═════════════════════════════════════════════════════════════════════════════
+PAGINAS = [
+    "📊  Dashboard",
+    "🔄  Reentregas",
+    "🔍  Detalhes Reentregas",
+    "🗂️  Campos",
+    "📑  Dados Completos",
+    "👥  Clientes",
+    "❗  Motivos",
+    "🚚  Veículos",
+    "📤  Relatórios",
+    "⚙️  Configurações",
+]
+
+with st.sidebar:
+    st.markdown("""
+    <div class="side-brand">
+      <div class="side-mark">📦</div>
+      <div>
+        <div class="side-brand-t">Delly's Food Service</div>
+        <div class="side-brand-s">Logística</div>
+      </div>
+    </div>
+    <div class="side-cap">Navegação</div>
+    """, unsafe_allow_html=True)
+
+    pagina = st.radio("Navegação", PAGINAS, label_visibility="collapsed", key="nav")
+
+    st.markdown(f"""
+    <div class="side-foot">
+      Devoluções carregadas: <b style="color:#38bdf8;">{len(df_raw)}</b><br>
+      Reentregas carregadas: <b style="color:#34d399;">{_n_reent}</b><br>
+      Cache: 60s
+    </div>
+    """, unsafe_allow_html=True)
+
+pagina = pagina.split("  ", 1)[-1].strip()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# FILTROS GLOBAIS (devoluções) — mesma lógica de filtragem do sistema atual
+# ═════════════════════════════════════════════════════════════════════════════
+PAGS_COM_FILTRO = {"Dashboard", "Campos", "Dados Completos", "Clientes", "Motivos", "Veículos", "Relatórios"}
 
 usar_data = False
 dt_sel = None
+sel_dev = []
+sel_motivo = []
 
-with fc1:
-    datas_ok = df_raw["_DTENTREGA_DT"].dropna()
-    col_label = COL_DTENTREGA if COL_DTENTREGA else "DTENT"
-    if len(datas_ok) > 0:
-        datas_unicas = sorted(datas_ok.dt.date.unique())
-        opcoes_data = ["— Todas as datas —"] + [d.strftime("%d/%m/%Y") for d in datas_unicas]
-        sel_data_str = st.selectbox("📅 Filtrar por DATA", opcoes_data, key="g_dtsel")
-        if sel_data_str != "— Todas as datas —":
-            dt_sel = datetime.strptime(sel_data_str, "%d/%m/%Y").date()
-            usar_data = True
-    else:
-        st.caption("⚠️ Sem datas válidas em DATA")
+if pagina in PAGS_COM_FILTRO:
+    st.markdown('<div class="filters"><div class="filters-h"><span class="pip"></span>Filtros — devoluções</div>',
+                unsafe_allow_html=True)
+    fc1, fc2, fc3, fc4, fc5 = st.columns([3, 2.4, 2.4, 1.3, 1], gap="medium")
 
-with fc2:
-    if COL_DEVOLUCION:
-        devs_opts = sorted([x for x in df_raw[COL_DEVOLUCION].unique() if x not in ("","N/D","nan","None")])
-        sel_dev = st.multiselect("👷 NOMEFUNC (Devolucionista)", devs_opts, default=[], key="g_dev", placeholder="Todos")
-    else:
-        sel_dev = []
+    with fc1:
+        datas_ok = df_raw["_DTENTREGA_DT"].dropna()
+        if len(datas_ok) > 0:
+            datas_unicas = sorted(datas_ok.dt.date.unique())
+            opcoes_data = ["— Todas as datas —"] + [d.strftime("%d/%m/%Y") for d in datas_unicas]
+            sel_data_str = st.selectbox("Data", opcoes_data, key="g_dtsel")
+            if sel_data_str != "— Todas as datas —":
+                dt_sel = datetime.strptime(sel_data_str, "%d/%m/%Y").date()
+                usar_data = True
+        else:
+            st.caption("Sem datas válidas na coluna de data.")
 
-with fc3:
-    if COL_MOTIVO:
-        mot_opts = sorted([x for x in df_raw[COL_MOTIVO].unique() if x not in ("","N/D","nan","None")])
-        sel_motivo = st.multiselect("❗ Motivo", mot_opts, default=[], key="g_mot", placeholder="Todos")
-    else:
-        sel_motivo = []
+    with fc2:
+        if COL_DEVOLUCION:
+            devs_opts = sorted([x for x in df_raw[COL_DEVOLUCION].unique() if x not in ("", "N/D", "nan", "None")])
+            sel_dev = st.multiselect("Devolucionista", devs_opts, default=[], key="g_dev", placeholder="Todos")
 
-with fc4:
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🔄 Atualizar", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
+    with fc3:
+        if COL_MOTIVO:
+            mot_opts = sorted([x for x in df_raw[COL_MOTIVO].unique() if x not in ("", "N/D", "nan", "None")])
+            sel_motivo = st.multiselect("Motivo", mot_opts, default=[], key="g_mot", placeholder="Todos")
 
-st.markdown('</div>', unsafe_allow_html=True)
+    with fc4:
+        st.markdown("<div style='height:26px'></div>", unsafe_allow_html=True)
+        if st.button("Atualizar dados", use_container_width=True, type="primary", key="btn_upd_main"):
+            st.cache_data.clear()
+            st.rerun()
 
-# ── Aplica filtros ────────────────────────────────────────────────────────────
+    with fc5:
+        st.markdown("<div style='height:26px'></div>", unsafe_allow_html=True)
+        if st.button("Limpar", use_container_width=True, key="btn_clear"):
+            for k in ("g_dtsel", "g_dev", "g_mot"):
+                st.session_state.pop(k, None)
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ── Aplica filtros (lógica idêntica à original) ─────────────────────────────
 df = df_raw.copy()
 if usar_data and dt_sel:
     df = df[df["_DTENTREGA_DT"].dt.date == dt_sel]
@@ -432,565 +683,521 @@ if sel_dev and COL_DEVOLUCION:
 if sel_motivo and COL_MOTIVO:
     df = df[df[COL_MOTIVO].isin(sel_motivo)]
 
-total_val      = df[VALOR_COL].sum()
-total_notas    = len(df)
+total_val = df[VALOR_COL].sum()
+total_notas = len(df)
 total_clientes = df[COL_CLIENTE].nunique() if COL_CLIENTE else 0
-ticket_medio   = total_val / total_notas if total_notas > 0 else 0
-total_placas   = df[COL_PLACA].nunique() if COL_PLACA else 0
+ticket_medio = total_val / total_notas if total_notas > 0 else 0
+total_placas = df[COL_PLACA].nunique() if COL_PLACA else 0
 
-filtros_info = []
-if usar_data and dt_sel:
-    filtros_info.append(f"📅 {dt_sel.strftime('%d/%m/%Y')}")
-if sel_dev:
-    filtros_info.append(f"👷 {', '.join(sel_dev[:2])}{'...' if len(sel_dev)>2 else ''}")
-if sel_motivo:
-    filtros_info.append(f"❗ {len(sel_motivo)} motivo(s)")
-if filtros_info:
-    st.info(f"🔎 Filtros: {' · '.join(filtros_info)} — **{total_notas} registros filtrados**")
+if pagina in PAGS_COM_FILTRO:
+    filtros_info = []
+    if usar_data and dt_sel:
+        filtros_info.append(f"Data {dt_sel.strftime('%d/%m/%Y')}")
+    if sel_dev:
+        filtros_info.append(f"Devolucionista: {', '.join(sel_dev[:2])}{'…' if len(sel_dev) > 2 else ''}")
+    if sel_motivo:
+        filtros_info.append(f"{len(sel_motivo)} motivo(s)")
+    if filtros_info:
+        st.info(f"{' · '.join(filtros_info)} — **{total_notas} registros filtrados**")
 
-# ── Função reutilizável de gráfico de barras para reentregas ─────────────────
-def make_bar_reent_dash(df_data, x_col, y_col, bar_colors, title_txt, ylabel="Qtd"):
-    """Gráfico de barras simples para reentregas — usado no Dashboard e Detalhes."""
+
+# ═════════════════════════════════════════════════════════════════════════════
+# FUNÇÕES DE GRÁFICO
+# ═════════════════════════════════════════════════════════════════════════════
+def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None):
+    """Barras = Valor (R$) · Linha = Quantidade. Mesmos dados, apresentação limpa."""
     n = len(df_data)
+    if bar_colors is None:
+        bar_colors = ramp(n)
     fig = go.Figure()
+
+    max_val = df_data[val_col].max() if len(df_data) > 0 else 1
+    max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
+
+    # Evita colisão entre o rótulo da linha e o topo da barra
+    qtd_labels = []
+    for val, qtd in zip(df_data[val_col], df_data[qtd_col]):
+        bar_pos = float(val) / (max_val * 1.45) if max_val > 0 else 0
+        line_pos = float(qtd) / (max_qtd * 3.8) if max_qtd > 0 else 0
+        if abs(bar_pos - line_pos) < 0.09:
+            qtd_labels.append(f"<b>{qtd}</b><br> ")
+        else:
+            qtd_labels.append(f"<b>{qtd}</b>")
+
     fig.add_trace(go.Bar(
-        x=df_data[x_col],
-        y=df_data[y_col],
-        marker=dict(color=bar_colors[:n], opacity=0.90,
-                    line=dict(color="rgba(255,255,255,0.07)", width=0.5)),
-        text=[str(v) for v in df_data[y_col]],
+        x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
+        marker=dict(color=bar_colors, opacity=0.92,
+                    line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
+        text=[fmt_brl0(v) for v in df_data[val_col]],
         textposition="outside",
-        textfont=dict(size=15, color="#ffffff", family="DM Mono"),
-        hovertemplate="<b>%{x}</b><br>" + ylabel + ": <b>%{y}</b><extra></extra>",
+        textfont=dict(size=13, color="#e8f1fb", family="JetBrains Mono"),
+        hovertemplate="<b>%{x}</b><br>Valor: %{text}<extra></extra>", yaxis="y1",
     ))
-    h = max(420, min(n * 40, 620))
+    fig.add_trace(go.Scatter(
+        x=df_data[x_col], y=df_data[qtd_col], name="Quantidade",
+        mode="lines+markers+text",
+        text=qtd_labels, textposition="top center",
+        textfont=dict(color="#fcd34d", size=12, family="JetBrains Mono"),
+        line=dict(color="#fbbf24", width=2, shape="spline"),
+        marker=dict(color="#fde68a", size=7, line=dict(color="#fbbf24", width=1.5)),
+        hovertemplate="<b>%{x}</b><br>Quantidade: %{y}<extra></extra>", yaxis="y2",
+    ))
+    h = max(500, min(n * 44, 760))
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(255,255,255,0.32)",
-        font=dict(color="#c8d8e8", family="Space Grotesk"),
-        height=h,
-        margin=dict(t=50, b=100, l=12, r=20),
-        title=dict(text=f"<b>{title_txt}</b>",
-                   font=dict(size=16, color="#ffffff"), x=0.5, xanchor="center"),
-        bargap=0.30,
-        xaxis=dict(
-            tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
-            gridcolor="rgba(0,0,0,0)",
-            linecolor="rgba(0,0,0,0)",
-            zeroline=False,
-            tickangle=-38,
-            automargin=True,
-        ),
-        yaxis=dict(
-            title=dict(text=""),
-            showticklabels=False,
-            gridcolor="rgba(0,0,0,0)",
-            zeroline=False,
-        ),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#b9c8dc", family="Inter"),
+        height=h, margin=dict(t=64, b=86, l=10, r=30),
+        hoverlabel=HOVER,
+        title=dict(text=f"<span style='font-size:12px;color:#7c8ea8'>{periodo}</span>",
+                   x=0.5, xanchor="center", y=0.985),
+        bargap=0.34,
+        xaxis=dict(tickfont=dict(color="#a9bcd4", size=12, family="JetBrains Mono"),
+                   gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
+                   zeroline=False, tickangle=-38, automargin=True),
+        yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
+                   side="left", range=[0, max_val * 1.45]),
+        yaxis2=dict(showticklabels=False, overlaying="y", side="right", showgrid=False,
+                    zeroline=False, range=[0, max_qtd * 3.8]),
+        legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
+                    font=dict(color="#8fa3bd", size=12),
+                    orientation="h", x=1.0, xanchor="right", y=1.10),
     )
     return fig
 
-# ── Tabs ──────────────────────────────────────────────────────────────────────
-tab_dash, tab_reent, tab_reent_det, tab_campos, tab_dados = st.tabs([
-    "📊  Dashboard",
-    "🔄  Reentregas",
-    "🔍  Detalhes Reentregas",
-    "🗂️  Campos",
-    "📑  Dados Completos",
-])
 
-# ────────────────────────────────────────────────────────────────────────────
-# ABA 1 — DASHBOARD
-# ────────────────────────────────────────────────────────────────────────────
-with tab_dash:
-    st.markdown(f"""
-    <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-icon">💰</div><div class="kpi-label">Valor Total (VLTOTAL)</div>
-        <div class="kpi-value">{fmt_brl(total_val)}</div><div class="kpi-sub">Total devolvido</div></div>
-      <div class="kpi-card"><div class="kpi-icon">📄</div><div class="kpi-label">Devoluções</div>
-        <div class="kpi-value">{total_notas}</div><div class="kpi-sub">Registros filtrados</div></div>
-      <div class="kpi-card"><div class="kpi-icon">👤</div><div class="kpi-label">Clientes</div>
-        <div class="kpi-value">{total_clientes}</div><div class="kpi-sub">Clientes únicos</div></div>
-      <div class="kpi-card"><div class="kpi-icon">📊</div><div class="kpi-label">Ticket Médio</div>
-        <div class="kpi-value">{fmt_brl(ticket_medio)}</div><div class="kpi-sub">Por devolução</div></div>
-      <div class="kpi-card"><div class="kpi-icon">🚚</div><div class="kpi-label">Placas</div>
-        <div class="kpi-value">{total_placas}</div><div class="kpi-sub">Veículos únicos</div></div>
-    </div>
-    """, unsafe_allow_html=True)
+def make_bar_simple(df_data, x_col, y_col, bar_colors, title_txt="", ylabel="Qtd"):
+    """Barras verticais simples (quantidade)."""
+    n = len(df_data)
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df_data[x_col], y=df_data[y_col],
+        marker=dict(color=bar_colors[:n], opacity=0.92,
+                    line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
+        text=[str(v) for v in df_data[y_col]], textposition="outside",
+        textfont=dict(size=12, color="#e8f1fb", family="JetBrains Mono"),
+        hovertemplate="<b>%{x}</b><br>" + ylabel + ": %{y}<extra></extra>",
+    ))
+    h = max(400, min(n * 40, 600))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#b9c8dc", family="Inter"),
+        height=h, margin=dict(t=40 if title_txt else 16, b=96, l=10, r=16),
+        hoverlabel=HOVER,
+        title=dict(text=f"<span style='font-size:12px;color:#7c8ea8'>{title_txt}</span>",
+                   x=0.5, xanchor="center") if title_txt else None,
+        bargap=0.34,
+        xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
+                   gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
+                   zeroline=False, tickangle=-38, automargin=True),
+        yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
+    )
+    return fig
 
-    st.markdown("---")
 
-    # ── FUNÇÃO COMBO CHART ATUALIZADA ─────────────────────────────────────────
-    def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None):
-        n = len(df_data)
-        if bar_colors is None:
-            bar_colors = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
-        fig = go.Figure()
+def make_hbar(df_data, x_col, y_col, color_scale, height=400, money=True):
+    fig = px.bar(df_data, x=x_col, y=y_col, orientation="h",
+                 color=x_col, color_continuous_scale=color_scale,
+                 text=[fmt_brl0(v) if money else f"<b>{v}</b>" for v in df_data[x_col]],
+                 labels={y_col: "", x_col: "R$" if money else "Qtd"})
+    fig.update_traces(textposition="outside",
+                      textfont=dict(size=12, color="#cfe0f2", family="JetBrains Mono"),
+                      cliponaxis=False, marker_line_width=0,
+                      hovertemplate="<b>%{y}</b><br>%{x}<extra></extra>")
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#b9c8dc", family="Inter"), coloraxis_showscale=False,
+        height=height, margin=dict(t=8, b=26, l=6, r=96), hoverlabel=HOVER,
+        xaxis=dict(tickfont=dict(color="#7c8ea8", size=11), gridcolor=GRID,
+                   tickformat=",.0f", zeroline=False),
+        yaxis=dict(tickfont=dict(color="#cfe0f2", size=12, family="Inter"),
+                   gridcolor="rgba(0,0,0,0)", automargin=True),
+    )
+    return fig
 
-        max_val = df_data[val_col].max() if len(df_data) > 0 else 1
-        max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
 
-        # ── Detecta colisão: ponto da linha amarela perto do topo da barra
-        # Normaliza ambos para escala 0-1 usando seus próprios ranges
-        # Y1 (barras): range [0, max_val*1.45]  → posição relativa = val / (max_val*1.45)
-        # Y2 (linha):  range [0, max_qtd*3.8]   → posição relativa = qtd / (max_qtd*3.8)
-        # Se as posições relativas forem próximas (diff < 0.07), adiciona <br> extra
-        qtd_labels = []
-        for val, qtd in zip(df_data[val_col], df_data[qtd_col]):
-            bar_pos  = float(val) / (max_val * 1.45) if max_val > 0 else 0
-            line_pos = float(qtd) / (max_qtd * 3.8)  if max_qtd > 0 else 0
-            diff = abs(bar_pos - line_pos)
-            if diff < 0.09:  # colisão: adiciona espaçamento extra
-                qtd_labels.append(f"<b>{qtd}</b><br> ")
-            else:
-                qtd_labels.append(f"<b>{qtd}</b>")
+def kpi(icon, label, value, sub, accent, delta=None):
+    """delta: (texto, 'up'|'down'|'flat') — exibido apenas quando disponível."""
+    d = ""
+    if delta:
+        d = f'<span class="kpi-delta kpi-{delta[1]}">{delta[0]}</span>'
+    return (f'<div class="kpi" style="--acc:{accent};">'
+            f'<div class="kpi-top"><div class="kpi-ico">{icon}</div>{d}</div>'
+            f'<div class="kpi-val">{value}</div>'
+            f'<div class="kpi-lab">{label}</div>'
+            f'<div class="kpi-sub">{sub}</div></div>')
 
-        fig.add_trace(go.Bar(
-            x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
-            marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
-            text=[fmt_brl0(v) for v in df_data[val_col]],
-            textposition="outside",
-            textfont=dict(size=18, color="#ffffff", family="DM Mono"),
-            hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
-        ))
-        fig.add_trace(go.Scatter(
-            x=df_data[x_col], y=df_data[qtd_col], name="Qtd.",
-            mode="lines+markers+text",
-            text=qtd_labels,
-            textposition="top center",
-            textfont=dict(color="#fde68a", size=17, family="DM Mono"),
-            line=dict(color="#f59e0b", width=2.5),
-            marker=dict(color="#fde68a", size=10, line=dict(color="#f59e0b", width=2), symbol="circle"),
-            hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y2",
-        ))
-        h = max(520, min(n*46, 780))
-        fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(255,255,255,0.32)",
-            font=dict(color="#c8d8e8", family="Space Grotesk"),
-            height=h, margin=dict(t=110, b=100, l=12, r=70),
-            title=dict(
-                text=f"<b>{periodo}</b>",
-                font=dict(size=17, color="#ffffff"),
-                x=0.5, xanchor="center"
-            ),
-            bargap=0.28,
-            xaxis=dict(
-                tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
-                gridcolor="rgba(0,0,0,0)",
-                linecolor="rgba(0,0,0,0)",
-                zeroline=False,
-                tickangle=-38
-            ),
-            yaxis=dict(
-                title=dict(text=""),
-                showticklabels=False,
-                gridcolor="rgba(0,0,0,0)",
-                zeroline=False,
-                side="left",
-                range=[0, max_val * 1.45],
-            ),
-            yaxis2=dict(
-                title=dict(text=""),
-                showticklabels=False,
-                overlaying="y", side="right", showgrid=False,
-                zeroline=False,
-                range=[0, max_qtd * 3.8],
-            ),
-            legend=dict(
-                bgcolor="rgba(8,15,35,0.92)",
-                bordercolor="rgba(56,189,248,0.2)",
-                borderwidth=1,
-                font=dict(color="#c8d8e8", size=14),
-                orientation="h", x=1.0, xanchor="right", y=-0.22
-            ),
-        )
-        return fig
 
-    # Gráfico principal: PLACA (com acumulado mensal e comparação semanal)
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Devoluções por PLACA — Valor e Quantidade</h3></div>', unsafe_allow_html=True)
-    if COL_PLACA:
-        df_placa = (df[df[COL_PLACA].str.strip()!=""]
-                    .groupby(COL_PLACA).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
-                    .reset_index().sort_values("Valor",ascending=False))
-        if not df_placa.empty:
-            # ── Acumulado mensal (1º dia do mês corrente até hoje) ───────────
-            hoje = date.today()
-            primeiro_dia_mes = hoje.replace(day=1)
-            if "_DTENTREGA_DT" in df_raw.columns:
-                df_mes = df_raw[
-                    (df_raw["_DTENTREGA_DT"].dt.date >= primeiro_dia_mes) &
-                    (df_raw["_DTENTREGA_DT"].dt.date <= hoje)
-                ].copy()
-            else:
-                df_mes = pd.DataFrame()
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: DASHBOARD
+# ═════════════════════════════════════════════════════════════════════════════
+if pagina == "Dashboard":
 
-            col_graf, col_acum = st.columns([3, 1.5], gap="medium")
+    # Indicador de evolução: mesma comparação já usada na seção semanal
+    delta_val = None
+    if usar_data and dt_sel:
+        _prev = dt_sel - pd.Timedelta(days=7)
+        _tot_prev = df_raw[df_raw["_DTENTREGA_DT"].dt.date == _prev.date()][VALOR_COL].sum()
+        if _tot_prev > 0:
+            _p = (total_val - _tot_prev) / _tot_prev * 100
+            delta_val = (f"{_p:+.1f}%", "up" if _p > 0 else "down" if _p < 0 else "flat")
 
-            with col_graf:
-                n = len(df_placa)
-                bc = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
-                periodo = f"Data DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel else "Todos os períodos"
-                st.plotly_chart(make_combo_chart(df_placa,COL_PLACA,"Valor","Qtd","",periodo,bc), use_container_width=True)
-                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 5 — crítico</span><span>🟠 6–10 — atenção</span><span>🔵 Demais</span><span>🟡 Linha = quantidade</span></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="kpi-grid">'
+        + kpi("💰", "Valor total devolvido", fmt_brl(total_val), "Soma de VLTOTAL no filtro", "#22d3ee", delta_val)
+        + kpi("📄", "Devoluções", f"{total_notas}", "Notas no filtro atual", "#a78bfa")
+        + kpi("👥", "Clientes únicos", f"{total_clientes}", "Clientes com devolução", "#34d399")
+        + kpi("📈", "Ticket médio", fmt_brl(ticket_medio), "Valor por devolução", "#fbbf24")
+        + kpi("🚚", "Veículos únicos", f"{total_placas}", "Placas envolvidas", "#fb923c")
+        + '</div>', unsafe_allow_html=True)
 
-            with col_acum:
-                st.markdown(f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:0.82rem;color:#7dd3fc;letter-spacing:0.06em;margin-bottom:10px;">📈 ACUMULADO — {hoje.strftime("%m/%Y")}</div>', unsafe_allow_html=True)
-                if not df_mes.empty:
-                    df_mes_dia = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
-                                  .groupby("_DIA").agg(Valor=(VALOR_COL,"sum")).reset_index()
-                                  .sort_values("_DIA"))
-                    df_mes_dia["Acumulado"] = df_mes_dia["Valor"].cumsum()
-                    total_mes = df_mes_dia["Acumulado"].iloc[-1] if len(df_mes_dia) > 0 else 0
-                    valor_hoje = df_mes_dia.loc[df_mes_dia["_DIA"]==hoje, "Valor"].sum()
+    # ── ÁREA 1 — gráfico principal + acumulado ──────────────────────────────
+    col_graf, col_acum = st.columns([3, 1.35], gap="medium")
 
-                    fig_acum = go.Figure()
-                    fig_acum.add_trace(go.Scatter(
-                        x=df_mes_dia["_DIA"], y=df_mes_dia["Acumulado"],
-                        mode="lines+markers", fill="tozeroy",
-                        line=dict(color="#38bdf8", width=2.5),
-                        marker=dict(color="#7dd3fc", size=5),
-                        fillcolor="rgba(56,189,248,0.14)",
-                        hovertemplate="<b>%{x}</b><br>Acumulado: R$ %{y:,.0f}<extra></extra>",
-                    ))
-                    fig_acum.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.28)",
-                        font=dict(color="#c8d8e8", family="Space Grotesk", size=10),
-                        height=430, margin=dict(t=10,b=30,l=8,r=8),
-                        xaxis=dict(tickfont=dict(size=9,color="#94a3b8"), showgrid=False,
-                                   linecolor="rgba(255,255,255,0.1)"),
-                        yaxis=dict(tickfont=dict(size=9,color="#94a3b8"),
-                                   gridcolor="rgba(255,255,255,0.08)", tickformat=",.0f"),
-                        showlegend=False,
-                    )
-                    st.plotly_chart(fig_acum, use_container_width=True)
-                    st.markdown(
-                        f'<p style="font-size:0.72rem;color:#64748b;text-align:center;margin-top:-10px;">'
-                        f'Hoje: <b style="color:#f59e0b;">{fmt_brl0(valor_hoje)}</b> · '
-                        f'Total mês: <b style="color:#4ade80;">{fmt_brl0(total_mes)}</b></p>',
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.info("Sem dados no mês corrente.")
+    hoje = date.today()
+    primeiro_dia_mes = hoje.replace(day=1)
+    df_mes = pd.DataFrame()
+    if "_DTENTREGA_DT" in df_raw.columns:
+        df_mes = df_raw[
+            (df_raw["_DTENTREGA_DT"].dt.date >= primeiro_dia_mes) &
+            (df_raw["_DTENTREGA_DT"].dt.date <= hoje)
+        ].copy()
 
-            # ── Comparação por PLACA: dia de referência × mesmo dia da semana passada ──
-            st.markdown("---")
-            dia_ref = dt_sel if (usar_data and dt_sel) else date.today()
-            dia_sem_passada = dia_ref - pd.Timedelta(days=7)
-            dias_semana_pt = ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado","Domingo"]
-            nome_dia = dias_semana_pt[dia_ref.weekday()]
-
-            st.markdown(
-                f'<div class="sec-header"><div class="bar"></div>'
-                f'<h3>📆 Comparação por PLACA — {nome_dia}: {dia_ref.strftime("%d/%m/%Y")} × {dia_sem_passada.strftime("%d/%m/%Y")}</h3></div>',
-                unsafe_allow_html=True
-            )
-
-            if "_DTENTREGA_DT" in df_raw.columns:
-                df_atual_dia = df_raw[
-                    (df_raw["_DTENTREGA_DT"].dt.date == dia_ref) & (df_raw[COL_PLACA].str.strip()!="")
-                ].groupby(COL_PLACA).agg(Valor=(VALOR_COL,"sum"), Qtd=(VALOR_COL,"count")).reset_index()
-                df_semana_dia = df_raw[
-                    (df_raw["_DTENTREGA_DT"].dt.date == dia_sem_passada) & (df_raw[COL_PLACA].str.strip()!="")
-                ].groupby(COL_PLACA).agg(Valor=(VALOR_COL,"sum"), Qtd=(VALOR_COL,"count")).reset_index()
-            else:
-                df_atual_dia = pd.DataFrame(columns=[COL_PLACA,"Valor","Qtd"])
-                df_semana_dia = pd.DataFrame(columns=[COL_PLACA,"Valor","Qtd"])
-
-            todas_placas_comp = sorted(set(df_atual_dia[COL_PLACA]))
-
-            if todas_placas_comp:
-                df_comp = pd.DataFrame({COL_PLACA: todas_placas_comp})
-                df_comp = df_comp.merge(df_atual_dia.rename(columns={"Valor":"Valor_Atual","Qtd":"Qtd_Atual"}), on=COL_PLACA, how="left")
-                df_comp = df_comp.merge(df_semana_dia.rename(columns={"Valor":"Valor_Semana","Qtd":"Qtd_Semana"}), on=COL_PLACA, how="left")
-                df_comp[["Valor_Atual","Qtd_Atual","Valor_Semana","Qtd_Semana"]] = df_comp[["Valor_Atual","Qtd_Atual","Valor_Semana","Qtd_Semana"]].fillna(0)
-                df_comp = df_comp.sort_values("Valor_Atual", ascending=False)
-
-                fig_comp = go.Figure()
-                fig_comp.add_trace(go.Bar(
-                    x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
-                    name=f"{dia_sem_passada.strftime('%d/%m')} (semana passada)",
-                    marker=dict(color="#0ea5e9", opacity=0.88, line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
-                    text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]],
-                    textposition="outside", textfont=dict(size=12, color="#bae6fd", family="DM Mono"),
-                    hovertemplate="<b>%{x}</b><br>Semana passada: <b>%{text}</b><extra></extra>",
-                ))
-                fig_comp.add_trace(go.Bar(
-                    x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
-                    name=f"{dia_ref.strftime('%d/%m')} (referência)",
-                    marker=dict(color="#22c55e", opacity=0.92, line=dict(color="rgba(255,255,255,0.08)", width=0.5)),
-                    text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]],
-                    textposition="outside", textfont=dict(size=12, color="#ffffff", family="DM Mono"),
-                    hovertemplate="<b>%{x}</b><br>Referência: <b>%{text}</b><extra></extra>",
-                ))
-                # ── Linhas amarelas: quantidade de notas devolvidas (eixo secundário) ──
-                fig_comp.add_trace(go.Scatter(
-                    x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
-                    name=f"Qtd. {dia_sem_passada.strftime('%d/%m')} (semana passada)",
-                    mode="lines+markers+text",
-                    text=[f"<b>{int(v)}</b>" for v in df_comp["Qtd_Semana"]],
-                    textposition="top center", textfont=dict(color="#fca5a5", size=12, family="DM Mono"),
-                    line=dict(color="#ef4444", width=2, dash="dot"),
-                    marker=dict(color="#fca5a5", size=7, line=dict(color="#ef4444", width=1.5), symbol="circle"),
-                    hovertemplate="<b>%{x}</b><br>Qtd semana passada: <b>%{y}</b><extra></extra>",
-                    yaxis="y2",
-                ))
-                fig_comp.add_trace(go.Scatter(
-                    x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
-                    name=f"Qtd. {dia_ref.strftime('%d/%m')} (referência)",
-                    mode="lines+markers+text",
-                    text=[f"<b>{int(v)}</b>" for v in df_comp["Qtd_Atual"]],
-                    textposition="top center", textfont=dict(color="#fde68a", size=12, family="DM Mono"),
-                    line=dict(color="#f59e0b", width=2.5),
-                    marker=dict(color="#fde68a", size=8, line=dict(color="#f59e0b", width=2), symbol="circle"),
-                    hovertemplate="<b>%{x}</b><br>Qtd referência: <b>%{y}</b><extra></extra>",
-                    yaxis="y2",
-                ))
-                n_comp = len(df_comp)
-                max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
-                max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
-                fig_comp.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.32)",
-                    font=dict(color="#c8d8e8", family="Space Grotesk"),
-                    height=max(460, min(n_comp*50, 700)),
-                    margin=dict(t=20, b=100, l=12, r=40),
-                    barmode="group", bargap=0.28, bargroupgap=0.12,
-                    xaxis=dict(tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
-                               gridcolor="rgba(0,0,0,0)", linecolor="rgba(0,0,0,0)",
-                               zeroline=False, tickangle=-38, automargin=True),
-                    yaxis=dict(showticklabels=False, gridcolor="rgba(0,0,0,0)", zeroline=False,
-                               range=[0, max_val_comp * 1.5]),
-                    yaxis2=dict(showticklabels=False, overlaying="y", side="right",
-                                gridcolor="rgba(0,0,0,0)", zeroline=False,
-                                range=[0, max_qtd_comp * 3.4]),
-                    legend=dict(bgcolor="rgba(8,15,35,0.92)", bordercolor="rgba(56,189,248,0.2)",
-                                borderwidth=1, font=dict(color="#c8d8e8", size=12),
-                                orientation="h", x=0.5, xanchor="center", y=1.14),
-                )
-                st.plotly_chart(fig_comp, use_container_width=True)
-                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:10px;padding-left:4px;"><span>🟩 Valor referência (essa semana)</span><span>🟦 Valor semana passada</span><span>🟡 Linha sólida = Qtd. notas (referência)</span><span>🔴 Linha pontilhada = Qtd. notas (semana passada)</span></div>', unsafe_allow_html=True)
-
-                total_atual = df_comp["Valor_Atual"].sum()
-                total_semana = df_comp["Valor_Semana"].sum()
-                var_pct = ((total_atual - total_semana) / total_semana * 100) if total_semana > 0 else 0
-                seta = "🔺" if var_pct > 0 else ("🔻" if var_pct < 0 else "➖")
+    with col_graf:
+        periodo = (f"DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel
+                   else "Todos os períodos")
+        panel_open("Devoluções por placa — valor e quantidade", tag=periodo, icon="🚚")
+        if COL_PLACA:
+            df_placa = (df[df[COL_PLACA].str.strip() != ""]
+                        .groupby(COL_PLACA).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                        .reset_index().sort_values("Valor", ascending=False))
+            if not df_placa.empty:
+                st.plotly_chart(
+                    make_combo_chart(df_placa, COL_PLACA, "Valor", "Qtd", "", periodo, ramp(len(df_placa))),
+                    use_container_width=True)
                 st.markdown(
-                    f'<p style="font-size:0.78rem;color:#94a3b8;padding:0 4px 6px;">'
-                    f'📌 Total {dia_ref.strftime("%d/%m")}: <b style="color:#38bdf8;">{fmt_brl0(total_atual)}</b> · '
-                    f'Total {dia_sem_passada.strftime("%d/%m")}: <b style="color:#94a3b8;">{fmt_brl0(total_semana)}</b> · '
-                    f'Variação: <b style="color:{"#ef4444" if var_pct>0 else "#4ade80"};">{seta} {var_pct:+.1f}%</b></p>',
-                    unsafe_allow_html=True
-                )
+                    '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.7rem;color:#4e5f78;'
+                    'margin-top:-14px;padding-left:4px;">'
+                    '<span>● Top 5 crítico</span><span>● 6–10 atenção</span>'
+                    '<span>● Demais</span><span>● Linha: quantidade de notas</span></div>',
+                    unsafe_allow_html=True)
             else:
-                st.info("Sem dados de PLACA para as datas comparadas.")
+                st.info("Nenhuma placa no filtro atual. Ajuste a data ou limpe os filtros.")
         else:
-            st.info("Sem dados de PLACA para o filtro selecionado")
-    else:
-        st.warning("Coluna PLACA não encontrada")
+            st.warning("Coluna PLACA não encontrada na planilha.")
+        panel_close()
 
-    st.markdown("---")
+    with col_acum:
+        panel_open("Acumulado", tag=hoje.strftime("%m/%Y"), icon="📈")
+        if not df_mes.empty:
+            df_mes_dia = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
+                          .groupby("_DIA").agg(Valor=(VALOR_COL, "sum")).reset_index()
+                          .sort_values("_DIA"))
+            df_mes_dia["Acumulado"] = df_mes_dia["Valor"].cumsum()
+            total_mes = df_mes_dia["Acumulado"].iloc[-1] if len(df_mes_dia) > 0 else 0
+            valor_hoje = df_mes_dia.loc[df_mes_dia["_DIA"] == hoje, "Valor"].sum()
 
-    # Gráfico MOTIVO
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ OCORRÊNCIAS DE RETORNO</h3></div>', unsafe_allow_html=True)
+            fig_acum = go.Figure()
+            fig_acum.add_trace(go.Scatter(
+                x=df_mes_dia["_DIA"], y=df_mes_dia["Acumulado"],
+                mode="lines", fill="tozeroy",
+                line=dict(color="#22d3ee", width=2, shape="spline"),
+                fillcolor="rgba(34,211,238,0.10)",
+                hovertemplate="<b>%{x}</b><br>Acumulado: R$ %{y:,.0f}<extra></extra>",
+            ))
+            fig_acum.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#b9c8dc", family="Inter", size=10),
+                height=468, margin=dict(t=8, b=26, l=6, r=6), hoverlabel=HOVER,
+                xaxis=dict(tickfont=dict(size=10, color="#7c8ea8"), showgrid=False,
+                           linecolor="rgba(120,170,225,0.10)"),
+                yaxis=dict(tickfont=dict(size=10, color="#7c8ea8"),
+                           gridcolor=GRID, tickformat=",.0f", zeroline=False),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_acum, use_container_width=True)
+            st.markdown(
+                f'<p style="font-size:0.72rem;color:#7c8ea8;text-align:center;margin-top:-12px;">'
+                f'Hoje <b class="num" style="color:#fbbf24;">{fmt_brl0(valor_hoje)}</b> &nbsp;·&nbsp; '
+                f'Mês <b class="num" style="color:#34d399;">{fmt_brl0(total_mes)}</b></p>',
+                unsafe_allow_html=True)
+        else:
+            st.info("Nenhum lançamento no mês corrente ainda.")
+        panel_close()
+
+    # ── ÁREA 2 — três painéis ───────────────────────────────────────────────
+    a1, a2, a3 = st.columns(3, gap="medium")
+
+    with a1:
+        panel_open("Devoluções por motivo", tag="Valor", icon="❗")
+        if COL_MOTIVO:
+            df_m_top = (df[df[COL_MOTIVO].str.strip() != ""]
+                        .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL, "sum"))
+                        .reset_index().sort_values("Valor", ascending=True).tail(8))
+            if not df_m_top.empty:
+                st.plotly_chart(make_hbar(df_m_top, "Valor", COL_MOTIVO, RED, 380), use_container_width=True)
+            else:
+                st.info("Sem motivos no filtro atual.")
+        panel_close()
+
+    with a2:
+        panel_open("Devoluções por veículo", tag="Quantidade", icon="🚚")
+        if COL_PLACA:
+            df_v_top = (df[df[COL_PLACA].str.strip() != ""]
+                        .groupby(COL_PLACA).agg(Qtd=(VALOR_COL, "count"))
+                        .reset_index().sort_values("Qtd", ascending=True).tail(8))
+            if not df_v_top.empty:
+                st.plotly_chart(make_hbar(df_v_top, "Qtd", COL_PLACA, BLUE, 380, money=False),
+                                use_container_width=True)
+            else:
+                st.info("Sem veículos no filtro atual.")
+        panel_close()
+
+    with a3:
+        panel_open("Evolução diária", tag="Mês corrente", icon="📊")
+        if not df_mes.empty:
+            df_ev = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
+                     .groupby("_DIA").agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                     .reset_index().sort_values("_DIA"))
+            fig_ev = go.Figure()
+            fig_ev.add_trace(go.Bar(
+                x=df_ev["_DIA"], y=df_ev["Valor"], name="Valor",
+                marker=dict(color="rgba(34,211,238,0.55)", line=dict(width=0)),
+                hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.0f}<extra></extra>"))
+            fig_ev.add_trace(go.Scatter(
+                x=df_ev["_DIA"], y=df_ev["Qtd"], name="Qtd", yaxis="y2",
+                mode="lines", line=dict(color="#a78bfa", width=2, shape="spline"),
+                hovertemplate="<b>%{x}</b><br>Notas: %{y}<extra></extra>"))
+            fig_ev.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#b9c8dc", family="Inter", size=10),
+                height=380, margin=dict(t=8, b=26, l=6, r=6), hoverlabel=HOVER,
+                bargap=0.4,
+                xaxis=dict(tickfont=dict(size=10, color="#7c8ea8"), showgrid=False,
+                           linecolor="rgba(120,170,225,0.10)"),
+                yaxis=dict(tickfont=dict(size=10, color="#7c8ea8"), gridcolor=GRID,
+                           tickformat=",.0f", zeroline=False),
+                yaxis2=dict(overlaying="y", side="right", showgrid=False,
+                            tickfont=dict(size=10, color="#a78bfa"), zeroline=False),
+                legend=dict(orientation="h", x=1, xanchor="right", y=1.16,
+                            bgcolor="rgba(0,0,0,0)", font=dict(size=11, color="#7c8ea8")),
+            )
+            st.plotly_chart(fig_ev, use_container_width=True)
+        else:
+            st.info("Nenhum lançamento no mês corrente ainda.")
+        panel_close()
+
+    # ── Comparação semanal por placa (lógica original preservada) ───────────
+    if COL_PLACA:
+        dia_ref = dt_sel if (usar_data and dt_sel) else date.today()
+        dia_sem_passada = dia_ref - pd.Timedelta(days=7)
+        dias_semana_pt = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira",
+                          "Sexta-feira", "Sábado", "Domingo"]
+        nome_dia = dias_semana_pt[dia_ref.weekday()]
+
+        panel_open(f"Comparação por placa — {nome_dia}",
+                   tag=f"{dia_ref.strftime('%d/%m')} × {dia_sem_passada.strftime('%d/%m')}", icon="📆")
+
+        if "_DTENTREGA_DT" in df_raw.columns:
+            df_atual_dia = df_raw[
+                (df_raw["_DTENTREGA_DT"].dt.date == dia_ref) & (df_raw[COL_PLACA].str.strip() != "")
+            ].groupby(COL_PLACA).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count")).reset_index()
+            df_semana_dia = df_raw[
+                (df_raw["_DTENTREGA_DT"].dt.date == dia_sem_passada) & (df_raw[COL_PLACA].str.strip() != "")
+            ].groupby(COL_PLACA).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count")).reset_index()
+        else:
+            df_atual_dia = pd.DataFrame(columns=[COL_PLACA, "Valor", "Qtd"])
+            df_semana_dia = pd.DataFrame(columns=[COL_PLACA, "Valor", "Qtd"])
+
+        todas_placas_comp = sorted(set(df_atual_dia[COL_PLACA]))
+
+        if todas_placas_comp:
+            df_comp = pd.DataFrame({COL_PLACA: todas_placas_comp})
+            df_comp = df_comp.merge(df_atual_dia.rename(columns={"Valor": "Valor_Atual", "Qtd": "Qtd_Atual"}),
+                                    on=COL_PLACA, how="left")
+            df_comp = df_comp.merge(df_semana_dia.rename(columns={"Valor": "Valor_Semana", "Qtd": "Qtd_Semana"}),
+                                    on=COL_PLACA, how="left")
+            df_comp[["Valor_Atual", "Qtd_Atual", "Valor_Semana", "Qtd_Semana"]] = \
+                df_comp[["Valor_Atual", "Qtd_Atual", "Valor_Semana", "Qtd_Semana"]].fillna(0)
+            df_comp = df_comp.sort_values("Valor_Atual", ascending=False)
+
+            fig_comp = go.Figure()
+            fig_comp.add_trace(go.Bar(
+                x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
+                name=f"{dia_sem_passada.strftime('%d/%m')} · semana passada",
+                marker=dict(color="rgba(59,130,246,0.55)", line=dict(width=0)),
+                text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]], textposition="outside",
+                textfont=dict(size=11, color="#9fc4f7", family="JetBrains Mono"),
+                hovertemplate="<b>%{x}</b><br>Semana passada: %{text}<extra></extra>"))
+            fig_comp.add_trace(go.Bar(
+                x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
+                name=f"{dia_ref.strftime('%d/%m')} · referência",
+                marker=dict(color="rgba(52,211,153,0.85)", line=dict(width=0)),
+                text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]], textposition="outside",
+                textfont=dict(size=11, color="#e8f1fb", family="JetBrains Mono"),
+                hovertemplate="<b>%{x}</b><br>Referência: %{text}<extra></extra>"))
+            fig_comp.add_trace(go.Scatter(
+                x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
+                name="Notas · semana passada", mode="lines+markers",
+                line=dict(color="#f87171", width=1.6, dash="dot"),
+                marker=dict(color="#fca5a5", size=6),
+                hovertemplate="<b>%{x}</b><br>Notas semana passada: %{y}<extra></extra>", yaxis="y2"))
+            fig_comp.add_trace(go.Scatter(
+                x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
+                name="Notas · referência", mode="lines+markers+text",
+                text=[f"<b>{int(v)}</b>" for v in df_comp["Qtd_Atual"]],
+                textposition="top center", textfont=dict(color="#fcd34d", size=11, family="JetBrains Mono"),
+                line=dict(color="#fbbf24", width=2),
+                marker=dict(color="#fde68a", size=7),
+                hovertemplate="<b>%{x}</b><br>Notas referência: %{y}<extra></extra>", yaxis="y2"))
+
+            n_comp = len(df_comp)
+            max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
+            max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
+            fig_comp.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#b9c8dc", family="Inter"),
+                height=max(440, min(n_comp * 48, 680)),
+                margin=dict(t=54, b=90, l=10, r=24), hoverlabel=HOVER,
+                barmode="group", bargap=0.32, bargroupgap=0.12,
+                xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
+                           gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
+                           zeroline=False, tickangle=-38, automargin=True),
+                yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
+                           range=[0, max_val_comp * 1.5]),
+                yaxis2=dict(showticklabels=False, overlaying="y", side="right",
+                            showgrid=False, zeroline=False, range=[0, max_qtd_comp * 3.4]),
+                legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color="#8fa3bd", size=11),
+                            orientation="h", x=0.5, xanchor="center", y=1.13),
+            )
+            st.plotly_chart(fig_comp, use_container_width=True)
+
+            total_atual = df_comp["Valor_Atual"].sum()
+            total_semana = df_comp["Valor_Semana"].sum()
+            var_pct = ((total_atual - total_semana) / total_semana * 100) if total_semana > 0 else 0
+            st.markdown(
+                f'<p style="font-size:0.76rem;color:#7c8ea8;padding:0 4px 8px;">'
+                f'{dia_ref.strftime("%d/%m")}: <b class="num" style="color:#34d399;">{fmt_brl0(total_atual)}</b> · '
+                f'{dia_sem_passada.strftime("%d/%m")}: <b class="num" style="color:#8fa3bd;">{fmt_brl0(total_semana)}</b> · '
+                f'variação <b class="num" style="color:{"#f87171" if var_pct > 0 else "#34d399"};">{var_pct:+.1f}%</b></p>',
+                unsafe_allow_html=True)
+        else:
+            st.info("Sem registros de placa nas datas comparadas.")
+        panel_close()
+
+    # ── Ocorrências de retorno ──────────────────────────────────────────────
     if COL_MOTIVO:
-        df_mot_v = (df[df[COL_MOTIVO].str.strip()!=""]
-                    .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
-                    .reset_index().sort_values("Valor",ascending=False))
+        panel_open("Ocorrências de retorno", tag="Valor e quantidade", icon="❗")
+        df_mot_v = (df[df[COL_MOTIVO].str.strip() != ""]
+                    .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                    .reset_index().sort_values("Valor", ascending=False))
         if not df_mot_v.empty:
             n_m = len(df_mot_v)
-            bc_m = ["#ef4444" if i<3 else "#f97316" if i<6 else "#0ea5e9" for i in range(n_m)]
-            fig_mv = make_combo_chart(df_mot_v, COL_MOTIVO, "Valor", "Qtd", "", "", bc_m)
-            fig_mv.update_layout(height=max(440,min(n_m*60,680)), margin=dict(t=40,b=110,l=12,r=70))
+            fig_mv = make_combo_chart(df_mot_v, COL_MOTIVO, "Valor", "Qtd", "", "", ramp(n_m, 3, 6))
+            fig_mv.update_layout(height=max(430, min(n_m * 58, 660)), margin=dict(t=54, b=110, l=10, r=30))
             fig_mv.update_xaxes(tickangle=-35, automargin=True)
             st.plotly_chart(fig_mv, use_container_width=True)
-            st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 3 — maior impacto</span><span>🟠 4–6 — atenção</span><span>🔵 Demais</span></div>', unsafe_allow_html=True)
-            with st.expander("📋 Tabela de motivos"):
+            with st.expander("Ver tabela de motivos"):
                 df_mt = df_mot_v.copy()
                 df_mt["Valor (R$)"] = df_mt["Valor"].apply(fmt_brl)
-                df_mt["% Total"] = (df_mt["Valor"]/total_val*100).round(1).astype(str)+"%" if total_val>0 else "0%"
-                df_mt = df_mt.rename(columns={COL_MOTIVO:"Motivo","Qtd":"Qtd."})
-                st.dataframe(df_mt[["Motivo","Qtd.","Valor (R$)","% Total"]], use_container_width=True, hide_index=True)
+                df_mt["% Total"] = (df_mt["Valor"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
+                df_mt = df_mt.rename(columns={COL_MOTIVO: "Motivo", "Qtd": "Qtd."})
+                html_table(df_mt[["Motivo", "Qtd.", "Valor (R$)", "% Total"]], max_rows=200, min_width=600)
+        else:
+            st.info("Sem ocorrências no filtro atual.")
+        panel_close()
 
-    st.markdown("---")
-
-    def make_hbar(df_data, x_col, y_col, color_scale, height=420):
-        fig = px.bar(df_data,x=x_col,y=y_col,orientation="h",
-                     color=x_col,color_continuous_scale=color_scale,
-                     text=[fmt_brl0(v) for v in df_data[x_col]],
-                     labels={y_col:"",x_col:"R$"})
-        fig.update_traces(
-            textposition="outside",
-            textfont=dict(size=14, color="#e2e8f0", family="DM Mono"),
-            cliponaxis=False, marker_line_width=0
-        )
-        fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(255,255,255,0.30)",
-            font=dict(color="#c8d8e8", family="Space Grotesk"),
-            coloraxis_showscale=False,
-            height=height, margin=dict(t=10,b=30,l=6,r=110),
-            xaxis=dict(
-                tickfont=dict(color="#94a3b8", size=13),
-                gridcolor="rgba(255,255,255,0.09)", tickformat=",.0f", zeroline=False
-            ),
-            yaxis=dict(
-                tickfont=dict(color="#dde6f0", size=14, family="Space Grotesk"),
-                gridcolor="rgba(0,0,0,0)", automargin=True
-            )
-        )
-        return fig
-
-    c1,c2,c3 = st.columns(3,gap="medium")
+    # ── Rankings ────────────────────────────────────────────────────────────
+    c1, c2, c3 = st.columns(3, gap="medium")
     with c1:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ TOP MOTIVOS</h3></div>', unsafe_allow_html=True)
+        panel_open("Top motivos", tag="R$", icon="❗")
         if COL_MOTIVO:
-            df_m2 = (df[df[COL_MOTIVO].str.strip()!=""]
-                     .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
-                     .reset_index().sort_values("Valor",ascending=True).tail(8))
+            df_m2 = (df[df[COL_MOTIVO].str.strip() != ""]
+                     .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                     .reset_index().sort_values("Valor", ascending=True).tail(8))
             if not df_m2.empty:
-                st.plotly_chart(make_hbar(df_m2,"Valor",COL_MOTIVO,RED,420),use_container_width=True)
-                top=df_m2.iloc[-1]
-                pct=top["Valor"]/total_val*100 if total_val>0 else 0
-                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{top[COL_MOTIVO]}</b> — {pct:.1f}% ({fmt_brl0(top["Valor"])})</p>',unsafe_allow_html=True)
+                st.plotly_chart(make_hbar(df_m2, "Valor", COL_MOTIVO, RED, 400), use_container_width=True)
+                top = df_m2.iloc[-1]
+                pct = top["Valor"] / total_val * 100 if total_val > 0 else 0
+                st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
+                            f'{top[COL_MOTIVO]} — {pct:.1f}% ({fmt_brl0(top["Valor"])})</p>',
+                            unsafe_allow_html=True)
+        panel_close()
     with c2:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>👤 TOP 10 CLIENTES</h3></div>', unsafe_allow_html=True)
+        panel_open("Top 10 clientes", tag="R$", icon="👥")
         if COL_CLIENTE:
-            df_cl = (df[df[COL_CLIENTE].str.strip()!=""]
-                     .groupby(COL_CLIENTE).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
-                     .reset_index().sort_values("Valor",ascending=True).tail(10))
+            df_cl = (df[df[COL_CLIENTE].str.strip() != ""]
+                     .groupby(COL_CLIENTE).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                     .reset_index().sort_values("Valor", ascending=True).tail(10))
             if not df_cl.empty:
-                st.plotly_chart(make_hbar(df_cl,"Valor",COL_CLIENTE,MIXED,420),use_container_width=True)
-                top_c=df_cl.iloc[-1]
-                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{str(top_c[COL_CLIENTE])[:30]}</b> — {fmt_brl0(top_c["Valor"])}</p>',unsafe_allow_html=True)
+                st.plotly_chart(make_hbar(df_cl, "Valor", COL_CLIENTE, MIXED, 400), use_container_width=True)
+                top_c = df_cl.iloc[-1]
+                st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
+                            f'{str(top_c[COL_CLIENTE])[:30]} — {fmt_brl0(top_c["Valor"])}</p>',
+                            unsafe_allow_html=True)
+        panel_close()
     with c3:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>🧑‍💼 TOP 10 NOMERCA (Vendedor)</h3></div>', unsafe_allow_html=True)
+        panel_open("Top 10 vendedores", tag="NOMERCA", icon="🧑‍💼")
         if COL_VENDEDOR:
-            df_vv = (df[df[COL_VENDEDOR].str.strip()!=""]
-                     .groupby(COL_VENDEDOR).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
-                     .reset_index().sort_values("Valor",ascending=True).tail(10))
+            df_vv = (df[df[COL_VENDEDOR].str.strip() != ""]
+                     .groupby(COL_VENDEDOR).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                     .reset_index().sort_values("Valor", ascending=True).tail(10))
             if not df_vv.empty:
-                st.plotly_chart(make_hbar(df_vv,"Valor",COL_VENDEDOR,BLUE,420),use_container_width=True)
-                top_v=df_vv.iloc[-1]
-                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{str(top_v[COL_VENDEDOR])[:30]}</b> — {int(top_v["Qtd"])} devoluções</p>',unsafe_allow_html=True)
+                st.plotly_chart(make_hbar(df_vv, "Valor", COL_VENDEDOR, BLUE, 400), use_container_width=True)
+                top_v = df_vv.iloc[-1]
+                st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
+                            f'{str(top_v[COL_VENDEDOR])[:30]} — {int(top_v["Qtd"])} devoluções</p>',
+                            unsafe_allow_html=True)
+        panel_close()
 
-    st.markdown("---")
-    c4,c5 = st.columns([1,2],gap="large")
+    c4, c5 = st.columns([1, 2], gap="medium")
     with c4:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>🏙️ Por DESTINO</h3></div>', unsafe_allow_html=True)
+        panel_open("Por destino", tag="Top 10", icon="🏙️")
         if COL_DESTINO:
-            df_dd = (df[df[COL_DESTINO].str.strip()!=""]
-                     .groupby(COL_DESTINO).agg(Valor=(VALOR_COL,"sum"))
-                     .reset_index().sort_values("Valor",ascending=False).head(10))
+            df_dd = (df[df[COL_DESTINO].str.strip() != ""]
+                     .groupby(COL_DESTINO).agg(Valor=(VALOR_COL, "sum"))
+                     .reset_index().sort_values("Valor", ascending=False).head(10))
             if not df_dd.empty:
-                fig_dd = px.pie(df_dd,names=COL_DESTINO,values="Valor",color_discrete_sequence=MIXED,hole=0.52)
-                fig_dd.update_traces(textfont=dict(size=13,color="#ffffff"),
-                    marker=dict(line=dict(color="rgba(4,9,20,0.8)",width=2)),pull=[0.05]+[0]*(len(df_dd)-1))
-                st.plotly_chart(plotly_dark(fig_dd,height=360),use_container_width=True)
+                fig_dd = px.pie(df_dd, names=COL_DESTINO, values="Valor",
+                                color_discrete_sequence=MIXED, hole=0.62)
+                fig_dd.update_traces(textfont=dict(size=12, color="#e8f1fb"),
+                                     marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
+                st.plotly_chart(plotly_dark(fig_dd, height=360), use_container_width=True)
+        panel_close()
     with c5:
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>📊 Ranking de Motivos</h3></div>', unsafe_allow_html=True)
+        panel_open("Ranking de motivos", tag="Consolidado", icon="📊")
         if COL_MOTIVO:
-            df_rk = (df.groupby(COL_MOTIVO).agg(Qtd=(VALOR_COL,"count"),Total=(VALOR_COL,"sum"))
-                     .reset_index().sort_values("Total",ascending=False))
+            df_rk = (df.groupby(COL_MOTIVO).agg(Qtd=(VALOR_COL, "count"), Total=(VALOR_COL, "sum"))
+                     .reset_index().sort_values("Total", ascending=False))
             df_rk["Valor Total"] = df_rk["Total"].apply(fmt_brl)
-            df_rk["% Total"] = (df_rk["Total"]/total_val*100).round(1).astype(str)+"%" if total_val>0 else "0%"
-            rows_h=""
-            for i,row in df_rk.rename(columns={COL_MOTIVO:"Motivo"}).iterrows():
-                bg="rgba(14,165,233,0.06)" if i%2==0 else "rgba(0,0,0,0)"
-                rows_h+=f'<tr style="background:{bg};"><td style="padding:10px 14px;color:#dde6f0;font-size:0.84rem;font-weight:600;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Motivo"]}</td><td style="padding:10px 14px;color:#7dd3fc;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Qtd"]}</td><td style="padding:10px 14px;color:#4ade80;font-size:0.84rem;font-weight:600;font-family:monospace;border-bottom:1px solid rgba(56,189,248,0.07);">{row["Valor Total"]}</td><td style="padding:10px 14px;color:#f59e0b;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.07);">{row["% Total"]}</td></tr>'
-            st.markdown(f'<div style="background:rgba(6,13,31,0.92);border:1px solid rgba(56,189,248,0.15);border-radius:14px;overflow:hidden;max-height:360px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:rgba(12,26,58,0.98);"><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-align:left;text-transform:uppercase;border-bottom:1px solid rgba(56,189,248,0.2);">Motivo</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(56,189,248,0.2);">Qtd</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;border-bottom:1px solid rgba(56,189,248,0.2);">Valor Total</th><th style="padding:12px 14px;color:#38bdf8;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(56,189,248,0.2);">%</th></tr></thead><tbody>{rows_h}</tbody></table></div>', unsafe_allow_html=True)
-
-    # ── SEÇÃO REENTREGAS NO DASHBOARD ────────────────────────────────────────
-    if df_reent is not None and len(df_reent) > 0:
-        st.markdown("---")
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>🔄 REENTREGAS — Visão Geral no Dashboard</h3></div>', unsafe_allow_html=True)
-
-        _placaant_col  = reent_cols.get("PLACAANT")
-        _motivo_r_col  = reent_cols.get("MOTIVOTRANSF")
-        _rv_col        = REENT_VALOR_COL
-
-        dash_r1, dash_r2 = st.columns(2, gap="large")
-
-        # ── Gráfico 1: Reentregas por MOTIVO ─────────────────────────────────
-        with dash_r1:
-            st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Reentregas por MOTIVO</h3></div>', unsafe_allow_html=True)
-            if _motivo_r_col and _motivo_r_col in df_reent.columns:
-                df_dash_mot = (df_reent[df_reent[_motivo_r_col].str.strip() != ""]
-                               .groupby(_motivo_r_col)
-                               .agg(Qtd=(_motivo_r_col, "count"))
-                               .reset_index()
-                               .sort_values("Qtd", ascending=False))
-                if not df_dash_mot.empty:
-                    n_dm = len(df_dash_mot)
-                    bc_dm = ["#ef4444" if i < 3 else "#f97316" if i < 6 else "#22c55e" for i in range(n_dm)]
-                    fig_dash_mot = make_bar_reent_dash(
-                        df_dash_mot, _motivo_r_col, "Qtd", bc_dm,
-                        "Quantidade por Motivo de Reentrega", "Qtd"
-                    )
-                    st.plotly_chart(fig_dash_mot, use_container_width=True)
-                    st.markdown(
-                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
-                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
-                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
-                        '<span>🟢 Demais</span></div>',
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.info("Sem dados de motivo de reentrega.")
-            else:
-                st.warning("Coluna MOTIVOTRANSF não encontrada nas reentregas.")
-
-        # ── Gráfico 2: Reentregas por PLACA ──────────────────────────────────
-        with dash_r2:
-            st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Reentregas por PLACA (PLACAANT)</h3></div>', unsafe_allow_html=True)
-            if _placaant_col and _placaant_col in df_reent.columns:
-                df_dash_placa = (df_reent[df_reent[_placaant_col].str.strip() != ""]
-                                 .groupby(_placaant_col)
-                                 .agg(Qtd=(_placaant_col, "count"))
-                                 .reset_index()
-                                 .sort_values("Qtd", ascending=False))
-                if not df_dash_placa.empty:
-                    n_dp = len(df_dash_placa)
-                    bc_dp = ["#ef4444" if i < 3 else "#f97316" if i < 6 else "#0ea5e9" for i in range(n_dp)]
-                    fig_dash_placa = make_bar_reent_dash(
-                        df_dash_placa, _placaant_col, "Qtd", bc_dp,
-                        "Quantidade por Placa (PLACAANT)", "Qtd"
-                    )
-                    st.plotly_chart(fig_dash_placa, use_container_width=True)
-                    st.markdown(
-                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
-                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
-                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
-                        '<span>🔵 Demais</span></div>',
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.info("Sem dados de placa de reentrega.")
-            else:
-                st.warning("Coluna PLACAANT não encontrada nas reentregas.")
+            df_rk["% Total"] = (df_rk["Total"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
+            html_table(df_rk.rename(columns={COL_MOTIVO: "Motivo"})[["Motivo", "Qtd", "Valor Total", "% Total"]],
+                       max_rows=200, min_width=520)
+        panel_close()
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# ABA 2 — REENTREGAS
-# ────────────────────────────────────────────────────────────────────────────
-with tab_reent:
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: REENTREGAS
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Reentregas":
     if reent_load_error:
-        st.error(f"❌ Erro ao carregar reentregas: {reent_load_error}")
+        st.error(f"Não foi possível carregar as reentregas: {reent_load_error}")
         st.markdown("""
-        **Como resolver:**
-        1. Abra a planilha no Google Sheets
-        2. Vá em **Arquivo → Compartilhar → Publicar na web**
-        3. Selecione a aba **8261 - REENTREGAS 2026**
-        4. Clique em **Publicar** e confirme
-        5. Volte aqui e clique em **🔄 Atualizar**
+**Como resolver**
+1. Abra a planilha no Google Sheets.
+2. Vá em **Arquivo → Compartilhar → Publicar na web**.
+3. Selecione a aba **8261 - REENTREGAS 2026**.
+4. Clique em **Publicar** e confirme.
+5. Volte aqui e use **Atualizar dados**.
         """)
-        with st.expander("🔧 URLs tentadas"):
+        with st.expander("URLs tentadas"):
             for u in REENTREGAS_URLS:
                 st.code(u)
     elif df_reent is None or len(df_reent) == 0:
-        st.warning("⚠️ Nenhum dado encontrado na aba de reentregas.")
+        st.warning("Nenhum dado encontrado na aba de reentregas.")
     else:
-        st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙️ FILTROS — REENTREGAS</div>', unsafe_allow_html=True)
-        rf1,rf2,rf3 = st.columns([3,3,1],gap="medium")
+        st.markdown('<div class="filters"><div class="filters-h"><span class="pip"></span>'
+                    'Filtros — reentregas</div>', unsafe_allow_html=True)
+        rf1, rf2, rf3, rf4 = st.columns([3, 3, 1.3, 1], gap="medium")
         usar_data_reent = False
         dt_reent_sel = None
 
@@ -1001,28 +1208,36 @@ with tab_reent:
             if len(datas_reent_ok) > 0:
                 datas_reent_unicas = sorted(datas_reent_ok.dt.date.unique())
                 opcoes_reent = ["— Todas as datas —"] + [d.strftime("%d/%m/%Y") for d in datas_reent_unicas]
-                sel_reent_str = st.selectbox(f"📅 Filtrar por {col_label_reent}", opcoes_reent, key="r_dtsel")
+                sel_reent_str = st.selectbox(f"Data ({col_label_reent})", opcoes_reent, key="r_dtsel")
                 if sel_reent_str != "— Todas as datas —":
                     dt_reent_sel = datetime.strptime(sel_reent_str, "%d/%m/%Y").date()
                     usar_data_reent = True
             else:
-                st.caption("⚠️ Sem datas DTRANSF válidas")
+                st.caption("Sem datas DTRANSF válidas.")
 
         with rf2:
             motivo_reent_col = reent_cols.get("MOTIVOTRANSF")
             if motivo_reent_col:
-                mot_reent_opts = sorted([x for x in df_reent[motivo_reent_col].unique() if x not in ("","N/D","nan","None")])
-                sel_mot_reent = st.multiselect("❗ MOTIVOTRANSF", mot_reent_opts, default=[], key="r_mot", placeholder="Todos")
+                mot_reent_opts = sorted([x for x in df_reent[motivo_reent_col].unique()
+                                         if x not in ("", "N/D", "nan", "None")])
+                sel_mot_reent = st.multiselect("Motivo da transferência", mot_reent_opts,
+                                               default=[], key="r_mot", placeholder="Todos")
             else:
                 sel_mot_reent = []
 
         with rf3:
-            st.markdown("<br>",unsafe_allow_html=True)
-            if st.button("🔄 Atualizar",use_container_width=True,key="btn_reent"):
+            st.markdown("<div style='height:26px'></div>", unsafe_allow_html=True)
+            if st.button("Atualizar dados", use_container_width=True, type="primary", key="btn_reent"):
                 st.cache_data.clear()
                 st.rerun()
+        with rf4:
+            st.markdown("<div style='height:26px'></div>", unsafe_allow_html=True)
+            if st.button("Limpar", use_container_width=True, key="btn_clear_reent"):
+                for k in ("r_dtsel", "r_mot"):
+                    st.session_state.pop(k, None)
+                st.rerun()
 
-        st.markdown('</div>',unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         df_r = df_reent.copy()
         if usar_data_reent and dt_reent_sel:
@@ -1031,463 +1246,621 @@ with tab_reent:
             df_r = df_r[df_r[motivo_reent_col].isin(sel_mot_reent)]
 
         if usar_data_reent and dt_reent_sel:
-            st.info(f"🔎 Filtro: 📅 {dt_reent_sel.strftime('%d/%m/%Y')} — **{len(df_r)} registros**")
+            st.info(f"Data {dt_reent_sel.strftime('%d/%m/%Y')} — **{len(df_r)} registros**")
 
-        # KPIs
-        total_reent       = len(df_r)
+        total_reent = len(df_r)
         total_reent_valor = df_r[REENT_VALOR_COL].sum() if REENT_VALOR_COL in df_r.columns else 0
-        placaant_col      = reent_cols.get("PLACAANT")
-        cliente_r_col     = reent_cols.get("CLIENTE")
-        praca_r_col       = reent_cols.get("PRACA")
-        nome_r_col        = reent_cols.get("NOME")
-        motivo_r_col2     = reent_cols.get("MOTIVOTRANSF")
-        total_placas_r    = df_r[placaant_col].nunique() if placaant_col and placaant_col in df_r.columns else 0
-        total_cli_r       = df_r[cliente_r_col].nunique() if cliente_r_col and cliente_r_col in df_r.columns else 0
-        ticket_r          = total_reent_valor/total_reent if total_reent>0 and total_reent_valor>0 else 0
+        placaant_col = reent_cols.get("PLACAANT")
+        cliente_r_col = reent_cols.get("CLIENTE")
+        praca_r_col = reent_cols.get("PRACA")
+        nome_r_col = reent_cols.get("NOME")
+        motivo_r_col2 = reent_cols.get("MOTIVOTRANSF")
+        total_placas_r = df_r[placaant_col].nunique() if placaant_col and placaant_col in df_r.columns else 0
+        total_cli_r = df_r[cliente_r_col].nunique() if cliente_r_col and cliente_r_col in df_r.columns else 0
+        ticket_r = total_reent_valor / total_reent if total_reent > 0 and total_reent_valor > 0 else 0
+        total_pracas_r = df_r[praca_r_col].nunique() if praca_r_col and praca_r_col in df_r.columns else 0
 
         if total_reent_valor > 0:
-            st.markdown(f"""<div class="kpi-grid">
-              <div class="kpi-card"><div class="kpi-icon">🔄</div><div class="kpi-label">Total Reentregas</div>
-                <div class="kpi-value-amber">{total_reent}</div><div class="kpi-sub">Registros</div></div>
-              <div class="kpi-card"><div class="kpi-icon">💰</div><div class="kpi-label">Valor Total (VLTOTGER)</div>
-                <div class="kpi-value">{fmt_brl(total_reent_valor)}</div><div class="kpi-sub">Total</div></div>
-              <div class="kpi-card"><div class="kpi-icon">👤</div><div class="kpi-label">Clientes</div>
-                <div class="kpi-value">{total_cli_r}</div><div class="kpi-sub">Únicos</div></div>
-              <div class="kpi-card"><div class="kpi-icon">📊</div><div class="kpi-label">Ticket Médio</div>
-                <div class="kpi-value">{fmt_brl(ticket_r)}</div><div class="kpi-sub">Por reentrega</div></div>
-              <div class="kpi-card"><div class="kpi-icon">🚚</div><div class="kpi-label">Placas Anteriores</div>
-                <div class="kpi-value">{total_placas_r}</div><div class="kpi-sub">PLACAANT</div></div>
-            </div>""", unsafe_allow_html=True)
+            st.markdown(
+                '<div class="kpi-grid">'
+                + kpi("🔄", "Total de reentregas", f"{total_reent}", "Registros no filtro", "#fbbf24")
+                + kpi("💰", "Valor total", fmt_brl(total_reent_valor), "Soma de VLTOTGER", "#22d3ee")
+                + kpi("👥", "Clientes únicos", f"{total_cli_r}", "Clientes atendidos", "#34d399")
+                + kpi("📈", "Ticket médio", fmt_brl(ticket_r), "Valor por reentrega", "#a78bfa")
+                + kpi("🚚", "Placas anteriores", f"{total_placas_r}", "PLACAANT distintas", "#fb923c")
+                + '</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f"""<div class="kpi-grid-4">
-              <div class="kpi-card"><div class="kpi-icon">🔄</div><div class="kpi-label">Total Reentregas</div>
-                <div class="kpi-value-amber">{total_reent}</div></div>
-              <div class="kpi-card"><div class="kpi-icon">👤</div><div class="kpi-label">Clientes</div>
-                <div class="kpi-value">{total_cli_r}</div></div>
-              <div class="kpi-card"><div class="kpi-icon">🚚</div><div class="kpi-label">Placas Anteriores</div>
-                <div class="kpi-value">{total_placas_r}</div></div>
-              <div class="kpi-card"><div class="kpi-icon">🗺️</div><div class="kpi-label">Praças</div>
-                <div class="kpi-value">{df_r[praca_r_col].nunique() if praca_r_col and praca_r_col in df_r.columns else 0}</div></div>
-            </div>""", unsafe_allow_html=True)
+            st.markdown(
+                '<div class="kpi-grid">'
+                + kpi("🔄", "Total de reentregas", f"{total_reent}", "Registros no filtro", "#fbbf24")
+                + kpi("👥", "Clientes únicos", f"{total_cli_r}", "Clientes atendidos", "#34d399")
+                + kpi("🚚", "Placas anteriores", f"{total_placas_r}", "PLACAANT distintas", "#fb923c")
+                + kpi("🗺️", "Praças", f"{total_pracas_r}", "Praças atendidas", "#a78bfa")
+                + '</div>', unsafe_allow_html=True)
 
-        st.markdown("---")
-
-        # ── FUNÇÃO COMBO REENTREGAS ATUALIZADA ───────────────────────────────
-        def make_combo_reent(df_data, x_col, y_col, qtd_col, bar_colors=None):
-            n = len(df_data)
-            if bar_colors is None:
-                bar_colors = ["#ef4444" if i<3 else "#f97316" if i<6 else "#22c55e" for i in range(n)]
-            fig = go.Figure()
-            fig.add_trace(go.Bar(
-                x=df_data[x_col], y=df_data[y_col], name="Qtd.",
-                marker=dict(color=bar_colors,opacity=0.88,line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
-                text=[f"<b>{v}</b>" for v in df_data[y_col]],
-                textposition="outside",
-                textfont=dict(size=16, color="#ffffff", family="DM Mono"),
-                hovertemplate="<b>%{x}</b><br>Qtd: <b>%{y}</b><extra></extra>", yaxis="y1",
-            ))
-            fig.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.32)",
-                font=dict(color="#c8d8e8", family="Space Grotesk"),
-                height=max(440,min(n*36,680)),
-                margin=dict(t=40,b=90,l=12,r=40),
-                bargap=0.28,
-                xaxis=dict(
-                    tickfont=dict(color="#d0dce8", size=14, family="DM Mono"),
-                    gridcolor="rgba(0,0,0,0)",
-                    linecolor="rgba(0,0,0,0)",
-                    zeroline=False,
-                    tickangle=-38
-                ),
-                yaxis=dict(
-                    title=dict(text=""),
-                    showticklabels=False,
-                    gridcolor="rgba(0,0,0,0)",
-                    zeroline=False,
-                ),
-                legend=dict(
-                    bgcolor="rgba(8,15,35,0.92)",
-                    bordercolor="rgba(56,189,248,0.2)",
-                    borderwidth=1,
-                    font=dict(color="#c8d8e8", size=14),
-                    orientation="h", x=1.0, xanchor="right", y=-0.22
-                ),
-            )
-            return fig
-
-        # PLACAANT
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Reentregas por PLACAANT — Quantidade</h3></div>', unsafe_allow_html=True)
-        if placaant_col and placaant_col in df_r.columns:
-            df_pr = (df_r[df_r[placaant_col].str.strip()!=""]
-                     .groupby(placaant_col).agg(Qtd=(placaant_col,"count"))
-                     .reset_index().sort_values("Qtd",ascending=False))
-            if not df_pr.empty:
-                n_p=len(df_pr)
-                bc_p=["#ef4444" if i<3 else "#f97316" if i<6 else "#22c55e" for i in range(n_p)]
-                st.plotly_chart(make_combo_reent(df_pr,placaant_col,"Qtd","Qtd",bc_p),use_container_width=True)
-                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span><span>🟢 Demais</span></div>',unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        # MOTIVOTRANSF
-        st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Reentregas por MOTIVOTRANSF</h3></div>', unsafe_allow_html=True)
-        if motivo_r_col2 and motivo_r_col2 in df_r.columns:
-            df_mr = (df_r[df_r[motivo_r_col2].str.strip()!=""]
-                     .groupby(motivo_r_col2).agg(Qtd=(motivo_r_col2,"count"))
-                     .reset_index().sort_values("Qtd",ascending=False))
-            if not df_mr.empty:
-                n_mr=len(df_mr)
-                bc_mr=["#ef4444" if i<3 else "#f97316" if i<6 else "#0ea5e9" for i in range(n_mr)]
-                fig_mr=make_combo_reent(df_mr,motivo_r_col2,"Qtd","Qtd",bc_mr)
-                fig_mr.update_layout(height=max(440,min(n_mr*60,680)),margin=dict(t=40,b=110,l=12,r=40))
-                fig_mr.update_xaxes(tickangle=-35,automargin=True)
-                st.plotly_chart(fig_mr,use_container_width=True)
-
-        st.markdown("---")
-
-        def make_hbar_reent(df_data, x_col, y_col, color_scale, height=420):
-            fig=px.bar(df_data,x=x_col,y=y_col,orientation="h",
-                       color=x_col,color_continuous_scale=color_scale,
-                       text=[f"<b>{v}</b>" for v in df_data[x_col]],
-                       labels={y_col:"",x_col:"Qtd"})
-            fig.update_traces(
-                textposition="outside",
-                textfont=dict(size=14, color="#e2e8f0", family="DM Mono"),
-                cliponaxis=False, marker_line_width=0
-            )
-            fig.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.30)",
-                font=dict(color="#c8d8e8", family="Space Grotesk"),
-                coloraxis_showscale=False,
-                height=height, margin=dict(t=10,b=30,l=6,r=80),
-                xaxis=dict(
-                    tickfont=dict(color="#94a3b8", size=13),
-                    gridcolor="rgba(255,255,255,0.09)", zeroline=False
-                ),
-                yaxis=dict(
-                    tickfont=dict(color="#dde6f0", size=14, family="Space Grotesk"),
-                    gridcolor="rgba(0,0,0,0)", automargin=True
-                )
-            )
-            return fig
-
-        cr1,cr2,cr3=st.columns(3,gap="medium")
-        with cr1:
-            if motivo_r_col2 and motivo_r_col2 in df_r.columns:
-                df_mr2=(df_r[df_r[motivo_r_col2].str.strip()!=""]
-                        .groupby(motivo_r_col2).agg(Qtd=(motivo_r_col2,"count"))
-                        .reset_index().sort_values("Qtd",ascending=True).tail(8))
-                if not df_mr2.empty:
-                    st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ PRINCIPAIS MOTIVOS</h3></div>',unsafe_allow_html=True)
-                    st.plotly_chart(make_hbar_reent(df_mr2,"Qtd",motivo_r_col2,RED,420),use_container_width=True)
-        with cr2:
-            if cliente_r_col and cliente_r_col in df_r.columns:
-                df_clr=(df_r[df_r[cliente_r_col].str.strip()!=""]
-                        .groupby(cliente_r_col).agg(Qtd=(cliente_r_col,"count"))
-                        .reset_index().sort_values("Qtd",ascending=True).tail(10))
-                if not df_clr.empty:
-                    st.markdown('<div class="sec-header"><div class="bar"></div><h3>👤 TOP 10 CLIENTES</h3></div>',unsafe_allow_html=True)
-                    st.plotly_chart(make_hbar_reent(df_clr,"Qtd",cliente_r_col,MIXED,420),use_container_width=True)
-        with cr3:
-            if nome_r_col and nome_r_col in df_r.columns:
-                df_nomr=(df_r[df_r[nome_r_col].str.strip()!=""]
-                         .groupby(nome_r_col).agg(Qtd=(nome_r_col,"count"))
-                         .reset_index().sort_values("Qtd",ascending=True).tail(10))
-                if not df_nomr.empty:
-                    st.markdown('<div class="sec-header"><div class="bar"></div><h3>🧑‍💼 TOP VENDEDORES (NOME)</h3></div>',unsafe_allow_html=True)
-                    st.plotly_chart(make_hbar_reent(df_nomr,"Qtd",nome_r_col,BLUE,420),use_container_width=True)
-
-        st.markdown("---")
-        cr4,cr5=st.columns([1,2],gap="large")
-        with cr4:
-            if praca_r_col and praca_r_col in df_r.columns:
-                st.markdown('<div class="sec-header"><div class="bar"></div><h3>🏙️ Por PRACA</h3></div>',unsafe_allow_html=True)
-                df_praca_r=(df_r[df_r[praca_r_col].str.strip()!=""]
-                            .groupby(praca_r_col).agg(Qtd=(praca_r_col,"count"))
-                            .reset_index().sort_values("Qtd",ascending=False).head(10))
-                if not df_praca_r.empty:
-                    fig_pr=px.pie(df_praca_r,names=praca_r_col,values="Qtd",
-                                  color_discrete_sequence=MIXED,hole=0.52)
-                    fig_pr.update_traces(textfont=dict(size=13,color="#ffffff"),
-                        marker=dict(line=dict(color="rgba(4,9,20,0.8)",width=2)),pull=[0.05]+[0]*(len(df_praca_r)-1))
-                    st.plotly_chart(plotly_dark(fig_pr,height=360),use_container_width=True)
-        with cr5:
-            if motivo_r_col2 and motivo_r_col2 in df_r.columns:
-                st.markdown('<div class="sec-header"><div class="bar"></div><h3>📊 Ranking MOTIVOTRANSF</h3></div>',unsafe_allow_html=True)
-                df_rkr=(df_r.groupby(motivo_r_col2).agg(Qtd=(motivo_r_col2,"count"))
-                        .reset_index().sort_values("Qtd",ascending=False))
-                tot_r=df_rkr["Qtd"].sum()
-                df_rkr["%"]=( df_rkr["Qtd"]/tot_r*100).round(1).astype(str)+"%" if tot_r>0 else "0%"
-                rows_hr=""
-                for i,row in df_rkr.iterrows():
-                    bg="rgba(74,222,128,0.05)" if i%2==0 else "rgba(0,0,0,0)"
-                    rows_hr+=f'<tr style="background:{bg};"><td style="padding:10px 14px;color:#dde6f0;font-size:0.84rem;font-weight:600;border-bottom:1px solid rgba(74,222,128,0.07);">{row[motivo_r_col2]}</td><td style="padding:10px 14px;color:#4ade80;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(74,222,128,0.07);">{row["Qtd"]}</td><td style="padding:10px 14px;color:#f59e0b;text-align:center;font-size:0.84rem;font-weight:700;border-bottom:1px solid rgba(74,222,128,0.07);">{row["%"]}</td></tr>'
-                st.markdown(f'<div style="background:rgba(6,13,31,0.92);border:1px solid rgba(74,222,128,0.15);border-radius:14px;overflow:hidden;max-height:360px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:rgba(12,26,58,0.98);"><th style="padding:12px 14px;color:#4ade80;font-size:0.75rem;font-weight:700;text-align:left;text-transform:uppercase;border-bottom:1px solid rgba(74,222,128,0.2);">Motivo</th><th style="padding:12px 14px;color:#4ade80;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(74,222,128,0.2);">Qtd</th><th style="padding:12px 14px;color:#4ade80;font-size:0.75rem;font-weight:700;text-align:center;border-bottom:1px solid rgba(74,222,128,0.2);">%</th></tr></thead><tbody>{rows_hr}</tbody></table></div>',unsafe_allow_html=True)
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# ABA 3 — DETALHES REENTREGAS
-# ────────────────────────────────────────────────────────────────────────────
-with tab_reent_det:
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>🔍 Campos das Reentregas — Pesquisa</h3></div>', unsafe_allow_html=True)
-    if df_reent is None or len(df_reent)==0:
-        st.warning("⚠️ Nenhum dado de reentregas disponível.")
-    else:
-        det_f1,det_f2=st.columns([3,1],gap="medium")
-        usar_data_det=False; dt_det_sel=None
-        with det_f1:
-            datas_det_ok=df_reent["_DATATRANSF_DT"].dropna()
-            dt_col_det=reent_cols.get("DATATRANSF"); col_label_det=dt_col_det if dt_col_det else "DTRANSF"
-            if len(datas_det_ok)>0:
-                datas_det_unicas=sorted(datas_det_ok.dt.date.unique())
-                opcoes_det=["— Todas as datas —"]+[d.strftime("%d/%m/%Y") for d in datas_det_unicas]
-                sel_det_str=st.selectbox(f"📅 {col_label_det}",opcoes_det,key="det_dtsel")
-                if sel_det_str!="— Todas as datas —":
-                    dt_det_sel=datetime.strptime(sel_det_str,"%d/%m/%Y").date(); usar_data_det=True
-        with det_f2:
-            st.markdown("<br>",unsafe_allow_html=True)
-            if st.button("🔄 Atualizar",use_container_width=True,key="btn_det"):
-                st.cache_data.clear(); st.rerun()
-
-        df_det_base=df_reent.copy()
-        if usar_data_det and dt_det_sel:
-            df_det_base=df_det_base[df_det_base["_DATATRANSF_DT"].dt.date==dt_det_sel]
-            st.info(f"🔎 Filtro ativo: 📅 **{dt_det_sel.strftime('%d/%m/%Y')}** — {len(df_det_base)} registros nos gráficos e tabela")
-        else:
-            st.info(f"📊 Exibindo **todos os períodos** — {len(df_det_base)} registros totais. Use o filtro de data acima para detalhar.")
-
-        ds1,ds2,ds3,ds4=st.columns(4,gap="medium")
-        with ds1: s_cli_r=st.text_input("👤 Cliente",placeholder="Nome",key="det_cli")
-        with ds2: s_nf_r=st.text_input("📄 Nota (NUMNOTA)",placeholder="Nº",key="det_nf")
-        with ds3: s_ped_r=st.text_input("📦 Pedido (NUMPED)",placeholder="Nº",key="det_ped")
-        with ds4: s_placa_r=st.text_input("🚚 Placa",placeholder="PLACAANT ou PLACAATUAL",key="det_placa")
-
-        REENT_DISPLAY=[
-            ("DATATRANSF","DTRANSF"),("NUMPED","NUMPED"),("NUMNOTA","NUMNOTA"),
-            ("DTFAT","DTFAT"),("DTSAIDA","DTSAIDA"),("CLIENTE","CLIENTE"),("CODCLI","CODCLI"),
-            ("BAIRROENT","BAIRROENT"),("CODPRACA","CODPRACA"),("PRACA","PRACA"),("ROTA","ROTA"),
-            ("NUMCARANTERIOR","CAR.ANT"),("PLACAANT","PLACAANT"),
-            ("NOME_MOT_ANTERIOR","MOT.ANT"),("NOME_AJU_ANTERIOR","AJU.ANT"),
-            ("NUMCARATUAL","CAR.ATUAL"),("PLACAATUAL","PLACAATUAL"),
-            ("NOME_MOT_ATUAL","MOT.ATUAL"),("NOME_AJU_ATUAL","AJU.ATUAL"),
-            ("CODMOTIVO","COD.MOTIVO"),("MOTIVOTRANSF","MOTIVO"),
-            ("VLTOTGER","VLTOTGER"),("TOTPESO","PESO"),("NOME","VENDEDOR"),("CODUSU","CODUSU"),
-        ]
-        cols_det_ok=[(reent_cols.get(k),label) for k,label in REENT_DISPLAY if reent_cols.get(k) is not None]
-        df_det=df_det_base[[o for o,_ in cols_det_ok]].copy()
-        df_det.columns=[label for _,label in cols_det_ok]
-
-        if s_cli_r.strip() and "CLIENTE" in df_det.columns: df_det=df_det[df_det["CLIENTE"].str.contains(s_cli_r.strip(),case=False,na=False)]
-        if s_nf_r.strip() and "NUMNOTA" in df_det.columns: df_det=df_det[df_det["NUMNOTA"].str.contains(s_nf_r.strip(),case=False,na=False)]
-        if s_ped_r.strip() and "NUMPED" in df_det.columns: df_det=df_det[df_det["NUMPED"].str.contains(s_ped_r.strip(),case=False,na=False)]
-        if s_placa_r.strip():
-            mask_p=pd.Series([False]*len(df_det),index=df_det.index)
-            for cp in ["PLACAANT","PLACAATUAL"]:
-                if cp in df_det.columns: mask_p=mask_p|df_det[cp].str.contains(s_placa_r.strip(),case=False,na=False)
-            df_det=df_det[mask_p]
-
-        # ── Gráficos de PLACAATUAL e MOTIVOTRANSF ────────────────────────────
-        st.markdown("---")
-        _det_placa_col  = reent_cols.get("PLACAATUAL")
-        _det_motivo_col = reent_cols.get("MOTIVOTRANSF")
-        # fallback: busca direta nas colunas reais
-        if not _det_placa_col:
-            for _c in ["PLACA_ATUAL","PLACAATUAL","PLACA_ATU"]:
-                if _c in df_det_base.columns:
-                    _det_placa_col = _c; break
-        if not _det_motivo_col:
-            for _c in ["MOTIVOTRANSF","MOTIVO_TRANSF"]:
-                if _c in df_det_base.columns:
-                    _det_motivo_col = _c; break
-
-        # Diagnóstico: sempre disponível para conferir colunas
-        with st.expander("🔧 Diagnóstico — colunas da planilha de reentregas"):
-            cols_real = list(df_reent_raw.columns)
-            st.write(f"**URL usada:** `{reent_url_usada}`")
-            st.write(f"**Total de linhas:** {len(df_reent_raw)} | **Colunas:** {len(cols_real)}")
-            st.write(f"**Colunas encontradas:** `{cols_real}`")
-            st.write(f"PLACA_ATUAL mapeada → `{reent_cols.get('PLACAATUAL')}`")
-            st.write(f"MOTIVOTRANSF mapeada → `{reent_cols.get('MOTIVOTRANSF')}`")
-            st.write(f"DTRANSF mapeada → `{reent_cols.get('DATATRANSF')}`")
-            st.write(f"PLACAANT mapeada → `{reent_cols.get('PLACAANT')}`")
-
-        gcol1, gcol2 = st.columns(2, gap="large")
-
-        with gcol1:
-            st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Reentregas por PLACAATUAL</h3></div>', unsafe_allow_html=True)
-            if _det_placa_col and _det_placa_col in df_det_base.columns:
-                df_gplaca = (df_det_base[df_det_base[_det_placa_col].str.strip() != ""]
-                             .groupby(_det_placa_col)
-                             .agg(Qtd=(_det_placa_col, "count"))
-                             .reset_index()
-                             .sort_values("Qtd", ascending=False))
-                if not df_gplaca.empty:
-                    n_gp = len(df_gplaca)
-                    bc_gp = ["#ef4444" if i<3 else "#f97316" if i<6 else "#0ea5e9" for i in range(n_gp)]
-                    fig_gp = make_bar_reent_dash(
-                        df_gplaca, _det_placa_col, "Qtd", bc_gp,
-                        "Quantidade por PLACAATUAL", "Qtd"
-                    )
-                    st.plotly_chart(fig_gp, use_container_width=True)
-                    st.markdown(
-                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
-                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
-                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
-                        '<span>🔵 Demais</span></div>', unsafe_allow_html=True)
+        g1, g2 = st.columns(2, gap="medium")
+        with g1:
+            panel_open("Reentregas por placa anterior", tag="PLACAANT", icon="🚚")
+            if placaant_col and placaant_col in df_r.columns:
+                df_pr = (df_r[df_r[placaant_col].str.strip() != ""]
+                         .groupby(placaant_col).agg(Qtd=(placaant_col, "count"))
+                         .reset_index().sort_values("Qtd", ascending=False))
+                if not df_pr.empty:
+                    st.plotly_chart(make_bar_simple(df_pr, placaant_col, "Qtd", ramp(len(df_pr), 3, 6, C_OK)),
+                                    use_container_width=True)
                 else:
-                    st.info("Sem dados de placa para o filtro selecionado.")
+                    st.info("Sem placas no filtro atual.")
             else:
-                st.warning("Coluna PLACAATUAL não encontrada.")
+                st.warning("Coluna PLACAANT não encontrada.")
+            panel_close()
 
-        with gcol2:
-            st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Reentregas por MOTIVO</h3></div>', unsafe_allow_html=True)
-            if _det_motivo_col and _det_motivo_col in df_det_base.columns:
-                df_gmot = (df_det_base[df_det_base[_det_motivo_col].str.strip() != ""]
-                           .groupby(_det_motivo_col)
-                           .agg(Qtd=(_det_motivo_col, "count"))
-                           .reset_index()
-                           .sort_values("Qtd", ascending=False))
-                if not df_gmot.empty:
-                    n_gm = len(df_gmot)
-                    bc_gm = ["#ef4444" if i<3 else "#f97316" if i<6 else "#22c55e" for i in range(n_gm)]
-                    fig_gm = make_bar_reent_dash(
-                        df_gmot, _det_motivo_col, "Qtd", bc_gm,
-                        "Quantidade por MOTIVOTRANSF", "Qtd"
-                    )
-                    st.plotly_chart(fig_gm, use_container_width=True)
-                    st.markdown(
-                        '<div style="display:flex;gap:18px;font-size:0.73rem;color:#64748b;'
-                        'margin-top:-8px;margin-bottom:14px;padding-left:4px;">'
-                        '<span>🔴 Top 3 — crítico</span><span>🟠 4–6 — atenção</span>'
-                        '<span>🟢 Demais</span></div>', unsafe_allow_html=True)
+        with g2:
+            panel_open("Reentregas por motivo", tag="MOTIVOTRANSF", icon="❗")
+            if motivo_r_col2 and motivo_r_col2 in df_r.columns:
+                df_mr = (df_r[df_r[motivo_r_col2].str.strip() != ""]
+                         .groupby(motivo_r_col2).agg(Qtd=(motivo_r_col2, "count"))
+                         .reset_index().sort_values("Qtd", ascending=False))
+                if not df_mr.empty:
+                    st.plotly_chart(make_bar_simple(df_mr, motivo_r_col2, "Qtd", ramp(len(df_mr), 3, 6)),
+                                    use_container_width=True)
                 else:
-                    st.info("Sem dados de motivo para o filtro selecionado.")
+                    st.info("Sem motivos no filtro atual.")
             else:
                 st.warning("Coluna MOTIVOTRANSF não encontrada.")
+            panel_close()
 
-        st.markdown("---")
-        st.caption(f"Exibindo {len(df_det):,} registros".replace(",","."))
-        if len(df_det)==0:
-            st.warning("⚠️ Nenhum registro encontrado.")
-        else:
-            heads="".join([f'<th style="padding:11px 13px;color:#4ade80;font-size:0.74rem;font-weight:700;text-align:left;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid rgba(74,222,128,0.22);background:rgba(10,26,48,0.99);">{c}</th>' for c in df_det.columns])
-            rws=""
-            for idx,(_,row) in enumerate(df_det.head(500).iterrows()):
-                bg="rgba(74,222,128,0.04)" if idx%2==0 else "rgba(0,0,0,0)"
-                cells="".join([f'<td style="padding:9px 13px;color:#dde6f0;font-size:0.83rem;font-weight:500;border-bottom:1px solid rgba(74,222,128,0.05);white-space:nowrap;">{val}</td>' for val in row.values])
-                rws+=f'<tr style="background:{bg};">{cells}</tr>'
-            st.markdown(f'<div style="background:rgba(5,11,28,0.94);border:1px solid rgba(74,222,128,0.16);border-radius:14px;overflow:hidden;max-height:560px;overflow-y:auto;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:1100px;"><thead><tr>{heads}</tr></thead><tbody>{rws}</tbody></table></div>',unsafe_allow_html=True)
-            csv_det=df_det.to_csv(index=False,sep=";",decimal=",").encode("utf-8-sig")
-            st.markdown("<div style='margin-top:12px;'></div>",unsafe_allow_html=True)
-            st.download_button("⬇️ Exportar (.csv)",data=csv_det,
-                file_name=f"reentregas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",mime="text/csv")
+        cr1, cr2, cr3 = st.columns(3, gap="medium")
+        with cr1:
+            panel_open("Principais motivos", tag="Qtd", icon="❗")
+            if motivo_r_col2 and motivo_r_col2 in df_r.columns:
+                df_mr2 = (df_r[df_r[motivo_r_col2].str.strip() != ""]
+                          .groupby(motivo_r_col2).agg(Qtd=(motivo_r_col2, "count"))
+                          .reset_index().sort_values("Qtd", ascending=True).tail(8))
+                if not df_mr2.empty:
+                    st.plotly_chart(make_hbar(df_mr2, "Qtd", motivo_r_col2, RED, 380, money=False),
+                                    use_container_width=True)
+            panel_close()
+        with cr2:
+            panel_open("Top 10 clientes", tag="Qtd", icon="👥")
+            if cliente_r_col and cliente_r_col in df_r.columns:
+                df_clr = (df_r[df_r[cliente_r_col].str.strip() != ""]
+                          .groupby(cliente_r_col).agg(Qtd=(cliente_r_col, "count"))
+                          .reset_index().sort_values("Qtd", ascending=True).tail(10))
+                if not df_clr.empty:
+                    st.plotly_chart(make_hbar(df_clr, "Qtd", cliente_r_col, MIXED, 380, money=False),
+                                    use_container_width=True)
+            panel_close()
+        with cr3:
+            panel_open("Top vendedores", tag="Qtd", icon="🧑‍💼")
+            if nome_r_col and nome_r_col in df_r.columns:
+                df_nomr = (df_r[df_r[nome_r_col].str.strip() != ""]
+                           .groupby(nome_r_col).agg(Qtd=(nome_r_col, "count"))
+                           .reset_index().sort_values("Qtd", ascending=True).tail(10))
+                if not df_nomr.empty:
+                    st.plotly_chart(make_hbar(df_nomr, "Qtd", nome_r_col, BLUE, 380, money=False),
+                                    use_container_width=True)
+            panel_close()
+
+        cr4, cr5 = st.columns([1, 2], gap="medium")
+        with cr4:
+            panel_open("Por praça", tag="Top 10", icon="🏙️")
+            if praca_r_col and praca_r_col in df_r.columns:
+                df_praca_r = (df_r[df_r[praca_r_col].str.strip() != ""]
+                              .groupby(praca_r_col).agg(Qtd=(praca_r_col, "count"))
+                              .reset_index().sort_values("Qtd", ascending=False).head(10))
+                if not df_praca_r.empty:
+                    fig_pr = px.pie(df_praca_r, names=praca_r_col, values="Qtd",
+                                    color_discrete_sequence=MIXED, hole=0.62)
+                    fig_pr.update_traces(textfont=dict(size=12, color="#e8f1fb"),
+                                         marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
+                    st.plotly_chart(plotly_dark(fig_pr, height=360), use_container_width=True)
+            panel_close()
+        with cr5:
+            panel_open("Ranking de motivos de transferência", tag="Consolidado", icon="📊")
+            if motivo_r_col2 and motivo_r_col2 in df_r.columns:
+                df_rkr = (df_r.groupby(motivo_r_col2).agg(Qtd=(motivo_r_col2, "count"))
+                          .reset_index().sort_values("Qtd", ascending=False))
+                tot_r = df_rkr["Qtd"].sum()
+                df_rkr["%"] = (df_rkr["Qtd"] / tot_r * 100).round(1).astype(str) + "%" if tot_r > 0 else "0%"
+                html_table(df_rkr.rename(columns={motivo_r_col2: "Motivo"}), max_rows=200, min_width=480)
+            panel_close()
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# ABA 4 — CAMPOS (devoluções)
-# ────────────────────────────────────────────────────────────────────────────
-with tab_campos:
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>🗂️ Campos — Devoluções</h3></div>', unsafe_allow_html=True)
-    sr1,sr2,sr3,sr4=st.columns(4,gap="medium")
-    with sr1: s_cli=st.text_input("👤 CLIENTE",placeholder="Nome",key="sc_cli")
-    with sr2: s_nf=st.text_input("📄 NOTA_VENDA",placeholder="Nº",key="sc_nf")
-    with sr3: s_ped=st.text_input("📦 CODCLI",placeholder="Código",key="sc_ped")
-    with sr4: s_placa2=st.text_input("🚚 PLACA",placeholder="Ex: NPB1J08",key="sc_placa")
-
-    CAMPOS=[
-        (COL_DTENTREGA,  "DTENT"),
-        (COL_DTSAIDA,    "DTSAIDA"),
-        (COL_NF_VENDA,   "NOTA_VENDA"),
-        (COL_NOTA_DEV,   "NOTA_DEVOLUCAO"),
-        (COL_NUMCAR,     "NUMCAR"),
-        (COL_PLACA,      "PLACA"),
-        (COL_DESTINO,    "DESTINO"),
-        (COL_MOTIVO,     "MOTIVO"),
-        (COL_CODCLI,     "CODCLI"),
-        (COL_CLIENTE,    "CLIENTE"),
-        (COL_MOTORISTA,  "MOTORISTA"),
-        (COL_VENDEDOR,   "NOMERCA"),
-        (COL_DEVOLUCION, "NOMEFUNC"),
-        (COL_SUPERVISOR, "SUPERVISOR"),
-        (COL_TIPO_MERC,  "TIPO_MERCADO"),
-    ]
-    cols_ok=[(o,a) for o,a in CAMPOS if o is not None]
-    df_campos=df[[o for o,_ in cols_ok]].copy()
-    df_campos.columns=[a for _,a in cols_ok]
-
-    if s_cli.strip() and "CLIENTE" in df_campos.columns: df_campos=df_campos[df_campos["CLIENTE"].str.contains(s_cli.strip(),case=False,na=False)]
-    if s_nf.strip() and "NOTA_VENDA" in df_campos.columns: df_campos=df_campos[df_campos["NOTA_VENDA"].str.contains(s_nf.strip(),case=False,na=False)]
-    if s_ped.strip() and "CODCLI" in df_campos.columns: df_campos=df_campos[df_campos["CODCLI"].str.contains(s_ped.strip(),case=False,na=False)]
-    if s_placa2.strip() and "PLACA" in df_campos.columns: df_campos=df_campos[df_campos["PLACA"].str.contains(s_placa2.strip(),case=False,na=False)]
-
-    if usar_data and dt_sel:
-        st.info(f"📅 Filtro ativo: {dt_sel.strftime('%d/%m/%Y')} (DATA)")
-
-    st.markdown("---")
-    st.caption(f"Exibindo {len(df_campos):,} registros".replace(",","."))
-
-    if len(df_campos)==0:
-        st.warning("⚠️ Nenhum registro encontrado.")
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: DETALHES REENTREGAS
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Detalhes Reentregas":
+    if df_reent is None or len(df_reent) == 0:
+        st.warning("Nenhum dado de reentregas disponível.")
     else:
-        heads_c="".join([f'<th style="padding:11px 13px;color:#38bdf8;font-size:0.74rem;font-weight:700;text-align:left;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid rgba(56,189,248,0.22);background:rgba(12,26,58,0.99);">{c}</th>' for c in df_campos.columns])
-        rows_hc=""
-        for idx,(_,row) in enumerate(df_campos.head(500).iterrows()):
-            bg="rgba(14,165,233,0.05)" if idx%2==0 else "rgba(0,0,0,0)"
-            cells="".join([f'<td style="padding:9px 13px;color:#dde6f0;font-size:0.83rem;font-weight:500;border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>' for val in row.values])
-            rows_hc+=f'<tr style="background:{bg};">{cells}</tr>'
-        st.markdown(f'<div style="background:rgba(5,11,28,0.94);border:1px solid rgba(56,189,248,0.16);border-radius:14px;overflow:hidden;max-height:560px;overflow-y:auto;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr>{heads_c}</tr></thead><tbody>{rows_hc}</tbody></table></div>',unsafe_allow_html=True)
-        if len(df_campos)>500: st.caption(f"⚠️ Exibindo primeiros 500 de {len(df_campos)}.")
-        csv_c=df_campos.to_csv(index=False,sep=";",decimal=",").encode("utf-8-sig")
-        st.markdown("<div style='margin-top:12px;'></div>",unsafe_allow_html=True)
-        st.download_button("⬇️ Exportar (.csv)",data=csv_c,
-            file_name=f"campos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",mime="text/csv")
+        st.markdown('<div class="filters"><div class="filters-h"><span class="pip"></span>'
+                    'Pesquisa — reentregas</div>', unsafe_allow_html=True)
+        det_f1, det_f2, det_f3 = st.columns([3, 1.3, 1], gap="medium")
+        usar_data_det = False
+        dt_det_sel = None
+        with det_f1:
+            datas_det_ok = df_reent["_DATATRANSF_DT"].dropna()
+            dt_col_det = reent_cols.get("DATATRANSF")
+            col_label_det = dt_col_det if dt_col_det else "DTRANSF"
+            if len(datas_det_ok) > 0:
+                datas_det_unicas = sorted(datas_det_ok.dt.date.unique())
+                opcoes_det = ["— Todas as datas —"] + [d.strftime("%d/%m/%Y") for d in datas_det_unicas]
+                sel_det_str = st.selectbox(f"Data ({col_label_det})", opcoes_det, key="det_dtsel")
+                if sel_det_str != "— Todas as datas —":
+                    dt_det_sel = datetime.strptime(sel_det_str, "%d/%m/%Y").date()
+                    usar_data_det = True
+        with det_f2:
+            st.markdown("<div style='height:26px'></div>", unsafe_allow_html=True)
+            if st.button("Atualizar dados", use_container_width=True, type="primary", key="btn_det"):
+                st.cache_data.clear()
+                st.rerun()
+        with det_f3:
+            st.markdown("<div style='height:26px'></div>", unsafe_allow_html=True)
+            if st.button("Limpar", use_container_width=True, key="btn_clear_det"):
+                for k in ("det_dtsel", "det_cli", "det_nf", "det_ped", "det_placa"):
+                    st.session_state.pop(k, None)
+                st.rerun()
+
+        ds1, ds2, ds3, ds4 = st.columns(4, gap="medium")
+        with ds1:
+            s_cli_r = st.text_input("Cliente", placeholder="Nome", key="det_cli")
+        with ds2:
+            s_nf_r = st.text_input("Nota (NUMNOTA)", placeholder="Número", key="det_nf")
+        with ds3:
+            s_ped_r = st.text_input("Pedido (NUMPED)", placeholder="Número", key="det_ped")
+        with ds4:
+            s_placa_r = st.text_input("Placa", placeholder="PLACAANT ou PLACAATUAL", key="det_placa")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        df_det_base = df_reent.copy()
+        if usar_data_det and dt_det_sel:
+            df_det_base = df_det_base[df_det_base["_DATATRANSF_DT"].dt.date == dt_det_sel]
+            st.info(f"Data {dt_det_sel.strftime('%d/%m/%Y')} — {len(df_det_base)} registros nos gráficos e na tabela")
+        else:
+            st.info(f"Todos os períodos — {len(df_det_base)} registros. Use o filtro de data para detalhar.")
+
+        REENT_DISPLAY = [
+            ("DATATRANSF", "DTRANSF"), ("NUMPED", "NUMPED"), ("NUMNOTA", "NUMNOTA"),
+            ("DTFAT", "DTFAT"), ("DTSAIDA", "DTSAIDA"), ("CLIENTE", "CLIENTE"), ("CODCLI", "CODCLI"),
+            ("BAIRROENT", "BAIRROENT"), ("CODPRACA", "CODPRACA"), ("PRACA", "PRACA"), ("ROTA", "ROTA"),
+            ("NUMCARANTERIOR", "CAR.ANT"), ("PLACAANT", "PLACAANT"),
+            ("NOME_MOT_ANTERIOR", "MOT.ANT"), ("NOME_AJU_ANTERIOR", "AJU.ANT"),
+            ("NUMCARATUAL", "CAR.ATUAL"), ("PLACAATUAL", "PLACAATUAL"),
+            ("NOME_MOT_ATUAL", "MOT.ATUAL"), ("NOME_AJU_ATUAL", "AJU.ATUAL"),
+            ("CODMOTIVO", "COD.MOTIVO"), ("MOTIVOTRANSF", "MOTIVO"),
+            ("VLTOTGER", "VLTOTGER"), ("TOTPESO", "PESO"), ("NOME", "VENDEDOR"), ("CODUSU", "CODUSU"),
+        ]
+        cols_det_ok = [(reent_cols.get(k), label) for k, label in REENT_DISPLAY if reent_cols.get(k) is not None]
+        df_det = df_det_base[[o for o, _ in cols_det_ok]].copy()
+        df_det.columns = [label for _, label in cols_det_ok]
+
+        if s_cli_r.strip() and "CLIENTE" in df_det.columns:
+            df_det = df_det[df_det["CLIENTE"].str.contains(s_cli_r.strip(), case=False, na=False)]
+        if s_nf_r.strip() and "NUMNOTA" in df_det.columns:
+            df_det = df_det[df_det["NUMNOTA"].str.contains(s_nf_r.strip(), case=False, na=False)]
+        if s_ped_r.strip() and "NUMPED" in df_det.columns:
+            df_det = df_det[df_det["NUMPED"].str.contains(s_ped_r.strip(), case=False, na=False)]
+        if s_placa_r.strip():
+            mask_p = pd.Series([False] * len(df_det), index=df_det.index)
+            for cp in ["PLACAANT", "PLACAATUAL"]:
+                if cp in df_det.columns:
+                    mask_p = mask_p | df_det[cp].str.contains(s_placa_r.strip(), case=False, na=False)
+            df_det = df_det[mask_p]
+
+        _det_placa_col = reent_cols.get("PLACAATUAL")
+        _det_motivo_col = reent_cols.get("MOTIVOTRANSF")
+        if not _det_placa_col:
+            for _c in ["PLACA_ATUAL", "PLACAATUAL", "PLACA_ATU"]:
+                if _c in df_det_base.columns:
+                    _det_placa_col = _c
+                    break
+        if not _det_motivo_col:
+            for _c in ["MOTIVOTRANSF", "MOTIVO_TRANSF"]:
+                if _c in df_det_base.columns:
+                    _det_motivo_col = _c
+                    break
+
+        gcol1, gcol2 = st.columns(2, gap="medium")
+        with gcol1:
+            panel_open("Reentregas por placa atual", tag="PLACAATUAL", icon="🚚")
+            if _det_placa_col and _det_placa_col in df_det_base.columns:
+                df_gplaca = (df_det_base[df_det_base[_det_placa_col].str.strip() != ""]
+                             .groupby(_det_placa_col).agg(Qtd=(_det_placa_col, "count"))
+                             .reset_index().sort_values("Qtd", ascending=False))
+                if not df_gplaca.empty:
+                    st.plotly_chart(make_bar_simple(df_gplaca, _det_placa_col, "Qtd", ramp(len(df_gplaca), 3, 6)),
+                                    use_container_width=True)
+                else:
+                    st.info("Sem placas para o filtro selecionado.")
+            else:
+                st.warning("Coluna PLACAATUAL não encontrada.")
+            panel_close()
+        with gcol2:
+            panel_open("Reentregas por motivo", tag="MOTIVOTRANSF", icon="❗")
+            if _det_motivo_col and _det_motivo_col in df_det_base.columns:
+                df_gmot = (df_det_base[df_det_base[_det_motivo_col].str.strip() != ""]
+                           .groupby(_det_motivo_col).agg(Qtd=(_det_motivo_col, "count"))
+                           .reset_index().sort_values("Qtd", ascending=False))
+                if not df_gmot.empty:
+                    st.plotly_chart(make_bar_simple(df_gmot, _det_motivo_col, "Qtd", ramp(len(df_gmot), 3, 6, C_OK)),
+                                    use_container_width=True)
+                else:
+                    st.info("Sem motivos para o filtro selecionado.")
+            else:
+                st.warning("Coluna MOTIVOTRANSF não encontrada.")
+            panel_close()
+
+        panel_open("Registros de reentrega", tag=f"{len(df_det)} linhas", icon="🔍")
+        if len(df_det) == 0:
+            st.warning("Nenhum registro encontrado. Ajuste a busca ou limpe os filtros.")
+        else:
+            html_table(df_det, min_width=1200)
+            if len(df_det) > 500:
+                st.caption(f"Exibindo as primeiras 500 de {len(df_det)} linhas.")
+            csv_det = df_det.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
+            st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+            st.download_button("Exportar CSV", data=csv_det,
+                               file_name=f"reentregas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                               mime="text/csv")
+        panel_close()
+
+        with st.expander("Diagnóstico — colunas da planilha de reentregas"):
+            cols_real = list(df_reent_raw.columns)
+            st.write(f"**URL usada:** `{reent_url_usada}`")
+            st.write(f"**Linhas:** {len(df_reent_raw)} · **Colunas:** {len(cols_real)}")
+            st.write(f"**Colunas encontradas:** `{cols_real}`")
+            st.write(f"PLACA_ATUAL → `{reent_cols.get('PLACAATUAL')}`")
+            st.write(f"MOTIVOTRANSF → `{reent_cols.get('MOTIVOTRANSF')}`")
+            st.write(f"DTRANSF → `{reent_cols.get('DATATRANSF')}`")
+            st.write(f"PLACAANT → `{reent_cols.get('PLACAANT')}`")
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# ABA 5 — DADOS COMPLETOS
-# ────────────────────────────────────────────────────────────────────────────
-with tab_dados:
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>📑 Dados Completos</h3></div>', unsafe_allow_html=True)
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: CAMPOS
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Campos":
+    st.markdown('<div class="filters"><div class="filters-h"><span class="pip"></span>'
+                'Pesquisa — devoluções</div>', unsafe_allow_html=True)
+    sr1, sr2, sr3, sr4 = st.columns(4, gap="medium")
+    with sr1:
+        s_cli = st.text_input("Cliente", placeholder="Nome", key="sc_cli")
+    with sr2:
+        s_nf = st.text_input("Nota de venda", placeholder="Número", key="sc_nf")
+    with sr3:
+        s_ped = st.text_input("Código do cliente", placeholder="CODCLI", key="sc_ped")
+    with sr4:
+        s_placa2 = st.text_input("Placa", placeholder="Ex.: NPB1J08", key="sc_placa")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    display_cols=[c for c in actual_cols if not c.startswith("_")]
-    d1,d2,d3=st.columns(3,gap="medium")
-    sort_opts=[VALOR_COL]+[c for c in [COL_DTSAIDA,COL_DTENTREGA,COL_CLIENTE,COL_MOTIVO,COL_PLACA] if c]
-    with d1: sort_col=st.selectbox("Ordenar por",sort_opts)
-    with d2: sort_asc=st.radio("Direção",["↑ Crescente","↓ Decrescente"],horizontal=True)=="↑ Crescente"
-    with d3: n_rows=st.selectbox("Máximo de linhas",[50,100,250,500,1000,"Todos"])
+    CAMPOS = [
+        (COL_DTENTREGA, "DTENT"), (COL_DTSAIDA, "DTSAIDA"), (COL_NF_VENDA, "NOTA_VENDA"),
+        (COL_NOTA_DEV, "NOTA_DEVOLUCAO"), (COL_NUMCAR, "NUMCAR"), (COL_PLACA, "PLACA"),
+        (COL_DESTINO, "DESTINO"), (COL_MOTIVO, "MOTIVO"), (COL_CODCLI, "CODCLI"),
+        (COL_CLIENTE, "CLIENTE"), (COL_MOTORISTA, "MOTORISTA"), (COL_VENDEDOR, "NOMERCA"),
+        (COL_DEVOLUCION, "NOMEFUNC"), (COL_SUPERVISOR, "SUPERVISOR"), (COL_TIPO_MERC, "TIPO_MERCADO"),
+    ]
+    cols_ok = [(o, a) for o, a in CAMPOS if o is not None]
+    df_campos = df[[o for o, _ in cols_ok]].copy()
+    df_campos.columns = [a for _, a in cols_ok]
 
-    df_sorted=df.sort_values(sort_col,ascending=sort_asc)
-    if n_rows!="Todos": df_sorted=df_sorted.head(int(n_rows))
-    disp=df_sorted[display_cols]
+    if s_cli.strip() and "CLIENTE" in df_campos.columns:
+        df_campos = df_campos[df_campos["CLIENTE"].str.contains(s_cli.strip(), case=False, na=False)]
+    if s_nf.strip() and "NOTA_VENDA" in df_campos.columns:
+        df_campos = df_campos[df_campos["NOTA_VENDA"].str.contains(s_nf.strip(), case=False, na=False)]
+    if s_ped.strip() and "CODCLI" in df_campos.columns:
+        df_campos = df_campos[df_campos["CODCLI"].str.contains(s_ped.strip(), case=False, na=False)]
+    if s_placa2.strip() and "PLACA" in df_campos.columns:
+        df_campos = df_campos[df_campos["PLACA"].str.contains(s_placa2.strip(), case=False, na=False)]
 
-    heads_d="".join([f'<th style="padding:11px 13px;color:#38bdf8;font-size:0.74rem;font-weight:700;text-align:left;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid rgba(56,189,248,0.22);background:rgba(12,26,58,0.99);">{c}</th>' for c in disp.columns])
-    rows_hd=""
-    for idx,(_,row) in enumerate(disp.head(500).iterrows()):
-        bg="rgba(14,165,233,0.05)" if idx%2==0 else "rgba(0,0,0,0)"
-        cells="".join([f'<td style="padding:9px 13px;color:#dde6f0;font-size:0.83rem;font-weight:500;border-bottom:1px solid rgba(56,189,248,0.06);white-space:nowrap;">{val}</td>' for val in row.values])
-        rows_hd+=f'<tr style="background:{bg};">{cells}</tr>'
-    st.markdown(f'<div style="background:rgba(5,11,28,0.94);border:1px solid rgba(56,189,248,0.16);border-radius:14px;overflow:hidden;max-height:520px;overflow-y:auto;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr>{heads_d}</tr></thead><tbody>{rows_hd}</tbody></table></div>',unsafe_allow_html=True)
-    st.caption(f"Exibindo {len(disp.head(500)):,} de {len(df):,} registros".replace(",","."))
+    panel_open("Campos das devoluções", tag=f"{len(df_campos)} registros", icon="🗂️")
+    if len(df_campos) == 0:
+        st.warning("Nenhum registro encontrado. Ajuste a busca ou limpe os filtros.")
+    else:
+        html_table(df_campos, min_width=1000)
+        if len(df_campos) > 500:
+            st.caption(f"Exibindo as primeiras 500 de {len(df_campos)} linhas.")
+        csv_c = df_campos.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
+        st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+        st.download_button("Exportar CSV", data=csv_c,
+                           file_name=f"campos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
+    panel_close()
 
-    st.markdown("---")
-    e1,e2=st.columns(2)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: DADOS COMPLETOS
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Dados Completos":
+    display_cols = [c for c in actual_cols if not c.startswith("_")]
+
+    st.markdown('<div class="filters"><div class="filters-h"><span class="pip"></span>'
+                'Exibição da tabela</div>', unsafe_allow_html=True)
+    d1, d2, d3 = st.columns(3, gap="medium")
+    sort_opts = [VALOR_COL] + [c for c in [COL_DTSAIDA, COL_DTENTREGA, COL_CLIENTE, COL_MOTIVO, COL_PLACA] if c]
+    with d1:
+        sort_col = st.selectbox("Ordenar por", sort_opts)
+    with d2:
+        sort_asc = st.radio("Direção", ["Crescente", "Decrescente"], horizontal=True) == "Crescente"
+    with d3:
+        n_rows = st.selectbox("Máximo de linhas", [50, 100, 250, 500, 1000, "Todos"])
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    df_sorted = df.sort_values(sort_col, ascending=sort_asc)
+    if n_rows != "Todos":
+        df_sorted = df_sorted.head(int(n_rows))
+    disp = df_sorted[display_cols]
+
+    panel_open("Base completa de devoluções", tag=f"{len(df)} registros no filtro", icon="📑")
+    html_table(disp, min_width=1000)
+    st.caption(f"Exibindo {min(len(disp), 500)} de {len(df)} registros.")
+    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+    e1, e2 = st.columns(2)
     with e1:
-        csv_all=df[display_cols].to_csv(index=False,sep=";",decimal=",").encode("utf-8-sig")
-        st.download_button("⬇️ Exportar filtrados (.csv)",data=csv_all,
-            file_name=f"devolucoes_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",mime="text/csv",use_container_width=True)
+        csv_all = df[display_cols].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
+        st.download_button("Exportar filtrados (CSV)", data=csv_all,
+                           file_name=f"devolucoes_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                           mime="text/csv", use_container_width=True)
     with e2:
-        if st.button("🔄 Atualizar Dados",use_container_width=True):
-            st.cache_data.clear(); st.rerun()
+        if st.button("Atualizar dados", use_container_width=True, type="primary", key="btn_upd_dados"):
+            st.cache_data.clear()
+            st.rerun()
+    panel_close()
 
-    with st.expander("🔍 Diagnóstico — colunas detectadas"):
-        st.write(f"**Colunas devoluções ({len(actual_cols)}):** `{actual_cols}`")
-        st.write(f"Valor=`{VALOR_COL}` | Placa=`{COL_PLACA}` | Motivo=`{COL_MOTIVO}`")
-        st.write(f"Cliente=`{COL_CLIENTE}` | Devolucionista=`{COL_DEVOLUCION}`")
-        st.write(f"DataEntrada(DTENT)=`{COL_DTENTREGA}` | DataSaída=`{COL_DTSAIDA}`")
-        st.write(f"Supervisor=`{COL_SUPERVISOR}` | Destino=`{COL_DESTINO}` | Nota Dev=`{COL_NOTA_DEV}`")
-        st.write(f"Registros com valor > 0: {(df_raw[VALOR_COL]>0).sum()}")
-        if df_reent is not None:
-            st.write(f"**Colunas reentregas:** `{list(df_reent_raw.columns)}`")
-            st.write(f"Valor reent=`{REENT_VALOR_COL}` | PLACAANT=`{reent_cols.get('PLACAANT')}` | MOTIVOTRANSF=`{reent_cols.get('MOTIVOTRANSF')}`")
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: CLIENTES
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Clientes":
+    if not COL_CLIENTE:
+        st.warning("Coluna CLIENTE não encontrada na planilha.")
+    else:
+        df_cli_all = (df[df[COL_CLIENTE].str.strip() != ""]
+                      .groupby(COL_CLIENTE).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                      .reset_index().sort_values("Valor", ascending=False))
+        st.markdown(
+            '<div class="kpi-grid">'
+            + kpi("👥", "Clientes únicos", f"{total_clientes}", "Com devolução no filtro", "#34d399")
+            + kpi("💰", "Valor total", fmt_brl(total_val), "Soma de VLTOTAL", "#22d3ee")
+            + kpi("📄", "Devoluções", f"{total_notas}", "Notas no filtro", "#a78bfa")
+            + kpi("📈", "Ticket médio", fmt_brl(ticket_medio), "Valor por devolução", "#fbbf24")
+            + kpi("🏆", "Maior cliente",
+                  fmt_brl0(df_cli_all["Valor"].iloc[0]) if not df_cli_all.empty else "R$ 0",
+                  str(df_cli_all[COL_CLIENTE].iloc[0])[:26] if not df_cli_all.empty else "—", "#fb923c")
+            + '</div>', unsafe_allow_html=True)
+
+        cA, cB = st.columns([1.4, 1], gap="medium")
+        with cA:
+            panel_open("Clientes com maior valor devolvido", tag="Top 15", icon="👥")
+            df_top15 = df_cli_all.sort_values("Valor", ascending=True).tail(15)
+            if not df_top15.empty:
+                st.plotly_chart(make_hbar(df_top15, "Valor", COL_CLIENTE, MIXED, 560), use_container_width=True)
+            else:
+                st.info("Sem clientes no filtro atual.")
+            panel_close()
+        with cB:
+            panel_open("Clientes por quantidade de notas", tag="Top 15", icon="📄")
+            df_topq = df_cli_all.sort_values("Qtd", ascending=True).tail(15)
+            if not df_topq.empty:
+                st.plotly_chart(make_hbar(df_topq, "Qtd", COL_CLIENTE, BLUE, 560, money=False),
+                                use_container_width=True)
+            panel_close()
+
+        panel_open("Detalhamento por cliente", tag=f"{len(df_cli_all)} clientes", icon="📋")
+        tb = df_cli_all.copy()
+        tb["Valor total"] = tb["Valor"].apply(fmt_brl)
+        tb["% do total"] = (tb["Valor"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
+        tb["Ticket médio"] = (tb["Valor"] / tb["Qtd"]).apply(fmt_brl)
+        tb = tb.rename(columns={COL_CLIENTE: "Cliente", "Qtd": "Notas"})
+        html_table(tb[["Cliente", "Notas", "Valor total", "Ticket médio", "% do total"]], min_width=760)
+        panel_close()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: MOTIVOS
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Motivos":
+    if not COL_MOTIVO:
+        st.warning("Coluna MOTIVO não encontrada na planilha.")
+    else:
+        df_mot_all = (df[df[COL_MOTIVO].str.strip() != ""]
+                      .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                      .reset_index().sort_values("Valor", ascending=False))
+        st.markdown(
+            '<div class="kpi-grid">'
+            + kpi("❗", "Motivos distintos", f"{len(df_mot_all)}", "No filtro atual", "#f87171")
+            + kpi("💰", "Valor total", fmt_brl(total_val), "Soma de VLTOTAL", "#22d3ee")
+            + kpi("📄", "Devoluções", f"{total_notas}", "Notas no filtro", "#a78bfa")
+            + kpi("🥇", "Motivo líder",
+                  fmt_brl0(df_mot_all["Valor"].iloc[0]) if not df_mot_all.empty else "R$ 0",
+                  str(df_mot_all[COL_MOTIVO].iloc[0])[:26] if not df_mot_all.empty else "—", "#fbbf24")
+            + kpi("📈", "Ticket médio", fmt_brl(ticket_medio), "Valor por devolução", "#34d399")
+            + '</div>', unsafe_allow_html=True)
+
+        panel_open("Motivos — valor e quantidade", tag="Consolidado", icon="❗")
+        if not df_mot_all.empty:
+            fig_m = make_combo_chart(df_mot_all, COL_MOTIVO, "Valor", "Qtd", "", "", ramp(len(df_mot_all), 3, 6))
+            fig_m.update_layout(height=max(440, min(len(df_mot_all) * 58, 680)),
+                                margin=dict(t=54, b=120, l=10, r=30))
+            fig_m.update_xaxes(tickangle=-35, automargin=True)
+            st.plotly_chart(fig_m, use_container_width=True)
+        else:
+            st.info("Sem motivos no filtro atual.")
+        panel_close()
+
+        m1, m2 = st.columns([1, 1.4], gap="medium")
+        with m1:
+            panel_open("Participação por motivo", tag="Top 10", icon="🥧")
+            df_pie = df_mot_all.head(10)
+            if not df_pie.empty:
+                fig_pm = px.pie(df_pie, names=COL_MOTIVO, values="Valor",
+                                color_discrete_sequence=MIXED, hole=0.62)
+                fig_pm.update_traces(textfont=dict(size=12, color="#e8f1fb"),
+                                     marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
+                st.plotly_chart(plotly_dark(fig_pm, height=420), use_container_width=True)
+            panel_close()
+        with m2:
+            panel_open("Ranking completo", tag=f"{len(df_mot_all)} motivos", icon="📊")
+            tbm = df_mot_all.copy()
+            tbm["Valor total"] = tbm["Valor"].apply(fmt_brl)
+            tbm["% do total"] = (tbm["Valor"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
+            tbm = tbm.rename(columns={COL_MOTIVO: "Motivo", "Qtd": "Ocorrências"})
+            html_table(tbm[["Motivo", "Ocorrências", "Valor total", "% do total"]], min_width=620)
+            panel_close()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: VEÍCULOS
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Veículos":
+    if not COL_PLACA:
+        st.warning("Coluna PLACA não encontrada na planilha.")
+    else:
+        df_pl_all = (df[df[COL_PLACA].str.strip() != ""]
+                     .groupby(COL_PLACA).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                     .reset_index().sort_values("Valor", ascending=False))
+        st.markdown(
+            '<div class="kpi-grid">'
+            + kpi("🚚", "Veículos únicos", f"{total_placas}", "Placas no filtro", "#fb923c")
+            + kpi("💰", "Valor total", fmt_brl(total_val), "Soma de VLTOTAL", "#22d3ee")
+            + kpi("📄", "Devoluções", f"{total_notas}", "Notas no filtro", "#a78bfa")
+            + kpi("📊", "Média por veículo",
+                  fmt_brl(total_val / total_placas) if total_placas > 0 else "R$ 0,00",
+                  "Valor médio por placa", "#34d399")
+            + kpi("🥇", "Maior valor",
+                  fmt_brl0(df_pl_all["Valor"].iloc[0]) if not df_pl_all.empty else "R$ 0",
+                  str(df_pl_all[COL_PLACA].iloc[0]) if not df_pl_all.empty else "—", "#f87171")
+            + '</div>', unsafe_allow_html=True)
+
+        panel_open("Devoluções por veículo — valor e quantidade", tag="Consolidado", icon="🚚")
+        if not df_pl_all.empty:
+            st.plotly_chart(make_combo_chart(df_pl_all, COL_PLACA, "Valor", "Qtd", "", "", ramp(len(df_pl_all))),
+                            use_container_width=True)
+        else:
+            st.info("Sem veículos no filtro atual.")
+        panel_close()
+
+        v1, v2 = st.columns([1, 1.4], gap="medium")
+        with v1:
+            panel_open("Veículos por quantidade de notas", tag="Top 12", icon="📄")
+            df_pq = df_pl_all.sort_values("Qtd", ascending=True).tail(12)
+            if not df_pq.empty:
+                st.plotly_chart(make_hbar(df_pq, "Qtd", COL_PLACA, BLUE, 460, money=False),
+                                use_container_width=True)
+            panel_close()
+        with v2:
+            panel_open("Detalhamento por veículo", tag=f"{len(df_pl_all)} placas", icon="📋")
+            tbv = df_pl_all.copy()
+            tbv["Valor total"] = tbv["Valor"].apply(fmt_brl)
+            tbv["Ticket médio"] = (tbv["Valor"] / tbv["Qtd"]).apply(fmt_brl)
+            tbv["% do total"] = (tbv["Valor"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
+            tbv = tbv.rename(columns={COL_PLACA: "Placa", "Qtd": "Notas"})
+            html_table(tbv[["Placa", "Notas", "Valor total", "Ticket médio", "% do total"]], min_width=680)
+            panel_close()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: RELATÓRIOS
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Relatórios":
+    st.markdown(
+        '<div class="kpi-grid">'
+        + kpi("📄", "Devoluções no filtro", f"{total_notas}", "Prontas para exportar", "#22d3ee")
+        + kpi("💰", "Valor total", fmt_brl(total_val), "Soma de VLTOTAL", "#34d399")
+        + kpi("🔄", "Reentregas", f"{len(df_reent) if df_reent is not None else 0}", "Registros carregados", "#fbbf24")
+        + kpi("👥", "Clientes únicos", f"{total_clientes}", "No filtro atual", "#a78bfa")
+        + kpi("🚚", "Veículos únicos", f"{total_placas}", "No filtro atual", "#fb923c")
+        + '</div>', unsafe_allow_html=True)
+
+    panel_open("Exportações", tag="CSV separado por ponto e vírgula", icon="📤")
+    st.markdown('<p style="font-size:0.82rem;color:#7c8ea8;margin-bottom:14px;">'
+                'Os arquivos respeitam os filtros aplicados no topo da página.</p>', unsafe_allow_html=True)
+    r1, r2, r3 = st.columns(3, gap="medium")
+    display_cols_rel = [c for c in actual_cols if not c.startswith("_")]
+    with r1:
+        st.download_button("Devoluções filtradas",
+                           data=df[display_cols_rel].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+                           file_name=f"devolucoes_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                           mime="text/csv", use_container_width=True)
+    with r2:
+        if COL_MOTIVO:
+            _rm = (df.groupby(COL_MOTIVO).agg(Qtd=(VALOR_COL, "count"), Valor=(VALOR_COL, "sum"))
+                   .reset_index().sort_values("Valor", ascending=False))
+            st.download_button("Resumo por motivo",
+                               data=_rm.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+                               file_name=f"resumo_motivos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                               mime="text/csv", use_container_width=True)
+    with r3:
+        if df_reent is not None and len(df_reent) > 0:
+            _cols_r = [c for c in df_reent.columns if not c.startswith("_")]
+            st.download_button("Reentregas completas",
+                               data=df_reent[_cols_r].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+                               file_name=f"reentregas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                               mime="text/csv", use_container_width=True)
+        else:
+            st.caption("Reentregas indisponíveis no momento.")
+    panel_close()
+
+    panel_open("Resumo consolidado", tag="Visão do filtro atual", icon="📋")
+    linhas = []
+    if COL_MOTIVO:
+        _t = (df.groupby(COL_MOTIVO).agg(Qtd=(VALOR_COL, "count"), Valor=(VALOR_COL, "sum"))
+              .reset_index().sort_values("Valor", ascending=False).head(10))
+        for _, r in _t.iterrows():
+            linhas.append({"Dimensão": "Motivo", "Item": r[COL_MOTIVO], "Qtd": r["Qtd"],
+                           "Valor": fmt_brl(r["Valor"])})
+    if COL_PLACA:
+        _t = (df[df[COL_PLACA].str.strip() != ""].groupby(COL_PLACA)
+              .agg(Qtd=(VALOR_COL, "count"), Valor=(VALOR_COL, "sum"))
+              .reset_index().sort_values("Valor", ascending=False).head(10))
+        for _, r in _t.iterrows():
+            linhas.append({"Dimensão": "Veículo", "Item": r[COL_PLACA], "Qtd": r["Qtd"],
+                           "Valor": fmt_brl(r["Valor"])})
+    if linhas:
+        html_table(pd.DataFrame(linhas), min_width=560)
+    else:
+        st.info("Nada a resumir com os filtros atuais.")
+    panel_close()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PÁGINA: CONFIGURAÇÕES
+# ═════════════════════════════════════════════════════════════════════════════
+elif pagina == "Configurações":
+    panel_open("Fonte de dados", tag="Google Sheets", icon="🔌")
+    st.markdown(f'<p style="font-size:0.82rem;color:#b9c8dc;">Planilha: <code>{SHEET_ID}</code><br>'
+                f'Cache: 60 segundos · Última sincronização: {_sync}</p>', unsafe_allow_html=True)
+    cfg1, cfg2 = st.columns([1, 3])
+    with cfg1:
+        if st.button("Atualizar dados", use_container_width=True, type="primary", key="btn_cfg"):
+            st.cache_data.clear()
+            st.rerun()
+    panel_close()
+
+    panel_open("Colunas detectadas — devoluções", tag=f"{len(actual_cols)} colunas", icon="🧩")
+    st.write(f"**Colunas:** `{actual_cols}`")
+    st.write(f"Valor = `{VALOR_COL}` · Placa = `{COL_PLACA}` · Motivo = `{COL_MOTIVO}`")
+    st.write(f"Cliente = `{COL_CLIENTE}` · Devolucionista = `{COL_DEVOLUCION}`")
+    st.write(f"Data de entrada (DTENT) = `{COL_DTENTREGA}` · Data de saída = `{COL_DTSAIDA}`")
+    st.write(f"Supervisor = `{COL_SUPERVISOR}` · Destino = `{COL_DESTINO}` · Nota de devolução = `{COL_NOTA_DEV}`")
+    st.write(f"Registros com valor maior que zero: {(df_raw[VALOR_COL] > 0).sum()}")
+    panel_close()
+
+    panel_open("Colunas detectadas — reentregas", tag="Diagnóstico", icon="🧩")
+    if df_reent is not None:
+        st.write(f"**URL usada:** `{reent_url_usada}`")
+        st.write(f"**Colunas:** `{list(df_reent_raw.columns)}`")
+        st.write(f"Valor = `{REENT_VALOR_COL}` · PLACAANT = `{reent_cols.get('PLACAANT')}` · "
+                 f"PLACAATUAL = `{reent_cols.get('PLACAATUAL')}` · MOTIVOTRANSF = `{reent_cols.get('MOTIVOTRANSF')}`")
+    else:
+        st.warning("Reentregas não carregadas nesta sessão.")
+        if reent_load_error:
+            st.caption(reent_load_error)
+    panel_close()
+
+    panel_open("Sobre esta versão", tag="Interface v2", icon="ℹ️")
+    st.markdown(
+        '<p style="font-size:0.82rem;color:#7c8ea8;line-height:1.8;">'
+        'Redesign visual: menu lateral fixo, cabeçalho com status de sincronização, painel de filtros compacto, '
+        'cards de indicadores redesenhados e gráficos com eixos discretos.<br>'
+        'Nenhuma regra de cálculo, consulta, filtro ou fonte de dados foi alterada em relação à versão anterior.</p>',
+        unsafe_allow_html=True)
+    panel_close()
