@@ -723,22 +723,50 @@ with tab_dash:
                     textposition="outside", textfont=dict(size=12, color="#ffffff", family="DM Mono"),
                     hovertemplate="<b>%{x}</b><br>Referência: <b>%{text}</b><extra></extra>",
                 ))
+                # ── Linhas amarelas: quantidade de notas devolvidas (eixo secundário) ──
+                fig_comp.add_trace(go.Scatter(
+                    x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
+                    name=f"Qtd. {dia_sem_passada.strftime('%d/%m')} (semana passada)",
+                    mode="lines+markers+text",
+                    text=[f"<b>{int(v)}</b>" for v in df_comp["Qtd_Semana"]],
+                    textposition="top center", textfont=dict(color="#fcd34d", size=12, family="DM Mono"),
+                    line=dict(color="#eab308", width=2, dash="dot"),
+                    marker=dict(color="#fcd34d", size=7, line=dict(color="#eab308", width=1.5), symbol="circle"),
+                    hovertemplate="<b>%{x}</b><br>Qtd semana passada: <b>%{y}</b><extra></extra>",
+                    yaxis="y2",
+                ))
+                fig_comp.add_trace(go.Scatter(
+                    x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
+                    name=f"Qtd. {dia_ref.strftime('%d/%m')} (referência)",
+                    mode="lines+markers+text",
+                    text=[f"<b>{int(v)}</b>" for v in df_comp["Qtd_Atual"]],
+                    textposition="top center", textfont=dict(color="#fde68a", size=12, family="DM Mono"),
+                    line=dict(color="#f59e0b", width=2.5),
+                    marker=dict(color="#fde68a", size=8, line=dict(color="#f59e0b", width=2), symbol="circle"),
+                    hovertemplate="<b>%{x}</b><br>Qtd referência: <b>%{y}</b><extra></extra>",
+                    yaxis="y2",
+                ))
                 n_comp = len(df_comp)
+                max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
                 fig_comp.update_layout(
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.32)",
                     font=dict(color="#c8d8e8", family="Space Grotesk"),
-                    height=max(440, min(n_comp*50, 680)),
-                    margin=dict(t=20, b=100, l=12, r=20),
+                    height=max(460, min(n_comp*50, 700)),
+                    margin=dict(t=20, b=100, l=12, r=40),
                     barmode="group", bargap=0.28, bargroupgap=0.12,
                     xaxis=dict(tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
                                gridcolor="rgba(0,0,0,0)", linecolor="rgba(0,0,0,0)",
                                zeroline=False, tickangle=-38, automargin=True),
                     yaxis=dict(showticklabels=False, gridcolor="rgba(0,0,0,0)", zeroline=False),
+                    yaxis2=dict(showticklabels=False, overlaying="y", side="right",
+                                gridcolor="rgba(0,0,0,0)", zeroline=False,
+                                range=[0, max_qtd_comp * 2.6]),
                     legend=dict(bgcolor="rgba(8,15,35,0.92)", bordercolor="rgba(56,189,248,0.2)",
-                                borderwidth=1, font=dict(color="#c8d8e8", size=13),
-                                orientation="h", x=0.5, xanchor="center", y=1.10),
+                                borderwidth=1, font=dict(color="#c8d8e8", size=12),
+                                orientation="h", x=0.5, xanchor="center", y=1.14),
                 )
                 st.plotly_chart(fig_comp, use_container_width=True)
+                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:10px;padding-left:4px;"><span>🟦 Valor referência</span><span>⬛ Valor semana passada</span><span>🟡 Linha sólida = Qtd. notas (referência)</span><span>🟡 Linha pontilhada = Qtd. notas (semana passada)</span></div>', unsafe_allow_html=True)
 
                 total_atual = df_comp["Valor_Atual"].sum()
                 total_semana = df_comp["Valor_Semana"].sum()
