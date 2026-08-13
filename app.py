@@ -778,7 +778,7 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
     qtd_labels = []
     for val, qtd in zip(df_data[val_col], df_data[qtd_col]):
         bar_pos = float(val) / (max_val * 1.45) if max_val > 0 else 0
-        line_pos = float(qtd) / (max_qtd * 3.8) if max_qtd > 0 else 0
+        line_pos = float(qtd) / (max_qtd * 2.9) if max_qtd > 0 else 0
         if abs(bar_pos - line_pos) < 0.09:
             qtd_labels.append(f"<b>{qtd}</b><br> ")
         else:
@@ -787,18 +787,24 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
     # Rótulos de clientes: afasta quando encostariam no número da quantidade
     cli_labels = []
     if tem_cli:
-        for qtd, cli in zip(df_data[qtd_col], df_data[cli_col]):
-            q_pos = float(qtd) / (max_qtd * 3.8) if max_qtd > 0 else 0
-            c_pos = float(cli) / (max_qtd * 3.8) if max_qtd > 0 else 0
-            cli_labels.append(f" <br><b>{int(cli)}</b>" if abs(q_pos - c_pos) < 0.05 else f"<b>{int(cli)}</b>")
+        for val, qtd, cli in zip(df_data[val_col], df_data[qtd_col], df_data[cli_col]):
+            bar_pos = float(val) / (max_val * 1.45) if max_val > 0 else 0
+            q_pos = float(qtd) / (max_qtd * 2.9) if max_qtd > 0 else 0
+            c_pos = float(cli) / (max_qtd * 2.9) if max_qtd > 0 else 0
+            extra = ""
+            if abs(q_pos - c_pos) < 0.055:   # colidiria com o número da quantidade
+                extra += "<br> "
+            if abs(bar_pos - c_pos) < 0.055:  # colidiria com o valor da barra
+                extra += "<br> "
+            cli_labels.append(f"<b>{int(cli)}</b>{extra}")
 
     fig.add_trace(go.Bar(
         x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
         marker=dict(color=bar_colors, opacity=0.92,
                     line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
         text=[fmt_brl0(v) for v in df_data[val_col]],
-        textposition="outside",
-        textfont=dict(size=13, color="#e8f1fb", family="JetBrains Mono"),
+        textposition="outside", cliponaxis=False,
+        textfont=dict(size=11.5, color="#cfe0f2", family="JetBrains Mono"),
         hovertemplate="<b>%{x}</b><br>Valor: %{text}<extra></extra>", yaxis="y1",
     ))
     fig.add_trace(go.Scatter(
@@ -820,13 +826,13 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         fig.add_trace(go.Scatter(
             x=df_data[x_col], y=df_data[cli_col], name="Clientes por veículo",
             mode="lines+markers+text",
-            text=cli_labels, textposition="bottom center",
-            textfont=dict(color="#6ee7b7", size=12, family="JetBrains Mono"),
+            text=cli_labels, textposition="top center",
+            textfont=dict(color="#a7f3d0", size=12.5, family="JetBrains Mono"),
             line=dict(color="#34d399", width=2, shape="spline", dash="dot"),
-            marker=dict(color="#a7f3d0", size=7, line=dict(color="#34d399", width=1.5)),
+            marker=dict(color="#d1fae5", size=6, line=dict(color="#34d399", width=1.5)),
             hovertemplate="<b>%{x}</b><br>Clientes: %{y}<extra></extra>", yaxis="y2",
         ))
-    h = max(500, min(n * 44, 760))
+    h = max(560, min(n * 48, 820))
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#b9c8dc", family="Inter"),
@@ -841,7 +847,7 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
                    side="left", range=[0, max_val * 1.45]),
         yaxis2=dict(showticklabels=False, overlaying="y", side="right", showgrid=False,
-                    zeroline=False, range=[0, max_qtd * 3.8]),
+                    zeroline=False, range=[0, max_qtd * 2.9]),
         legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
                     font=dict(color="#8fa3bd", size=12),
                     orientation="h", x=0.5, xanchor="center", y=1.10,
