@@ -710,15 +710,15 @@ with tab_dash:
                 fig_comp.add_trace(go.Bar(
                     x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
                     name=f"{dia_sem_passada.strftime('%d/%m')} (semana passada)",
-                    marker=dict(color="#475569", opacity=0.85, line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
+                    marker=dict(color="#0ea5e9", opacity=0.88, line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
                     text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]],
-                    textposition="outside", textfont=dict(size=12, color="#cbd5e1", family="DM Mono"),
+                    textposition="outside", textfont=dict(size=12, color="#bae6fd", family="DM Mono"),
                     hovertemplate="<b>%{x}</b><br>Semana passada: <b>%{text}</b><extra></extra>",
                 ))
                 fig_comp.add_trace(go.Bar(
                     x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
                     name=f"{dia_ref.strftime('%d/%m')} (referência)",
-                    marker=dict(color="#0ea5e9", opacity=0.92, line=dict(color="rgba(255,255,255,0.08)", width=0.5)),
+                    marker=dict(color="#22c55e", opacity=0.92, line=dict(color="rgba(255,255,255,0.08)", width=0.5)),
                     text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]],
                     textposition="outside", textfont=dict(size=12, color="#ffffff", family="DM Mono"),
                     hovertemplate="<b>%{x}</b><br>Referência: <b>%{text}</b><extra></extra>",
@@ -748,6 +748,7 @@ with tab_dash:
                 ))
                 n_comp = len(df_comp)
                 max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
+                max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
                 fig_comp.update_layout(
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.32)",
                     font=dict(color="#c8d8e8", family="Space Grotesk"),
@@ -757,16 +758,17 @@ with tab_dash:
                     xaxis=dict(tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
                                gridcolor="rgba(0,0,0,0)", linecolor="rgba(0,0,0,0)",
                                zeroline=False, tickangle=-38, automargin=True),
-                    yaxis=dict(showticklabels=False, gridcolor="rgba(0,0,0,0)", zeroline=False),
+                    yaxis=dict(showticklabels=False, gridcolor="rgba(0,0,0,0)", zeroline=False,
+                               range=[0, max_val_comp * 1.5]),
                     yaxis2=dict(showticklabels=False, overlaying="y", side="right",
                                 gridcolor="rgba(0,0,0,0)", zeroline=False,
-                                range=[0, max_qtd_comp * 2.6]),
+                                range=[0, max_qtd_comp * 3.4]),
                     legend=dict(bgcolor="rgba(8,15,35,0.92)", bordercolor="rgba(56,189,248,0.2)",
                                 borderwidth=1, font=dict(color="#c8d8e8", size=12),
                                 orientation="h", x=0.5, xanchor="center", y=1.14),
                 )
                 st.plotly_chart(fig_comp, use_container_width=True)
-                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:10px;padding-left:4px;"><span>🟦 Valor referência</span><span>⬛ Valor semana passada</span><span>🟡 Linha sólida = Qtd. notas (referência)</span><span>🔴 Linha pontilhada = Qtd. notas (semana passada)</span></div>', unsafe_allow_html=True)
+                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:10px;padding-left:4px;"><span>🟩 Valor referência (essa semana)</span><span>🟦 Valor semana passada</span><span>🟡 Linha sólida = Qtd. notas (referência)</span><span>🔴 Linha pontilhada = Qtd. notas (semana passada)</span></div>', unsafe_allow_html=True)
 
                 total_atual = df_comp["Valor_Atual"].sum()
                 total_semana = df_comp["Valor_Semana"].sum()
