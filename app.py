@@ -697,7 +697,7 @@ with tab_dash:
                 df_atual_dia = pd.DataFrame(columns=[COL_PLACA,"Valor","Qtd"])
                 df_semana_dia = pd.DataFrame(columns=[COL_PLACA,"Valor","Qtd"])
 
-            todas_placas_comp = sorted(set(df_atual_dia[COL_PLACA]).union(set(df_semana_dia[COL_PLACA])))
+            todas_placas_comp = sorted(set(df_atual_dia[COL_PLACA]))
 
             if todas_placas_comp:
                 df_comp = pd.DataFrame({COL_PLACA: todas_placas_comp})
