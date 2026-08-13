@@ -70,7 +70,7 @@ html,body,.stApp{font-family:'Inter',sans-serif;color:var(--txt-1);background:va
 .stDeployButton,[data-testid="stStatusWidget"],[data-testid="stToolbar"],
 [data-testid="stHeader"],[data-testid="stDecoration"]{display:none!important;}
 .main .block-container{position:relative;z-index:1;padding-top:1.1rem!important;
-  padding-bottom:3rem!important;padding-left:2.1rem!important;padding-right:2.1rem!important;max-width:100%!important;}
+  padding-bottom:3rem!important;padding-left:1.6rem!important;padding-right:1.6rem!important;max-width:100%!important;}
 
 /* ── Menu lateral ────────────────────────────────────────────────────────── */
 section[data-testid="stSidebar"]{
@@ -145,16 +145,16 @@ section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked)
 
 /* ── Painéis / cards ─────────────────────────────────────────────────────── */
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
-  padding:18px 20px 8px;backdrop-filter:blur(16px);
+  padding:22px 24px 12px;backdrop-filter:blur(16px);
   box-shadow:0 8px 34px rgba(0,0,0,0.3);margin-bottom:18px;}
 .panel-h{display:flex;align-items:center;justify-content:space-between;gap:14px;
   margin-bottom:14px;}
 .panel-t{display:flex;align-items:center;gap:11px;}
-.panel-t .bar{width:3px;height:19px;border-radius:2px;
+.panel-t .bar{width:4px;height:24px;border-radius:2px;
   background:linear-gradient(180deg,var(--cyan),var(--blue));box-shadow:0 0 11px rgba(34,211,238,0.5);}
-.panel-t h3{font-family:'Sora',sans-serif;font-size:0.9rem;font-weight:600;color:var(--txt-0);
+.panel-t h3{font-family:'Sora',sans-serif;font-size:1.14rem;font-weight:600;color:var(--txt-0);
   margin:0;letter-spacing:.01em;}
-.panel-tag{font-size:0.64rem;color:var(--txt-3);letter-spacing:.13em;text-transform:uppercase;
+.panel-tag{font-size:0.76rem;color:var(--txt-3);letter-spacing:.13em;text-transform:uppercase;
   font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
   background:rgba(255,255,255,0.025);white-space:nowrap;}
 
@@ -302,6 +302,19 @@ hr{border-color:var(--line)!important;margin:20px 0!important;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(56,189,248,0.20);border-radius:8px;}
 ::-webkit-scrollbar-thumb:hover{background:rgba(56,189,248,0.38);}
+
+/* ── Tipografia dos gráficos (ajuste responsivo) ─────────────────────────── */
+@media (max-width:1400px){
+  .js-plotly-plot .xtick text,.js-plotly-plot .ytick text{font-size:12px!important;}
+  .js-plotly-plot .legend text{font-size:13px!important;}
+  .js-plotly-plot .textpoint text,.js-plotly-plot .bartext{font-size:14px!important;}
+}
+@media (max-width:1000px){
+  .js-plotly-plot .xtick text,.js-plotly-plot .ytick text{font-size:11px!important;}
+  .js-plotly-plot .legend text{font-size:12px!important;}
+  .js-plotly-plot .textpoint text,.js-plotly-plot .bartext{font-size:12px!important;}
+  .panel-t h3{font-size:1rem;}
+}
 
 /* ── Responsivo ──────────────────────────────────────────────────────────── */
 @media (max-width:1500px){ .kpi-val{font-size:1.42rem;} }
@@ -783,47 +796,56 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
 
     fig.add_trace(go.Bar(
         x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
-        marker=dict(color=bar_colors, opacity=0.92,
-                    line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
+        marker=dict(color=bar_colors, opacity=0.95,
+                    line=dict(color="rgba(255,255,255,0.14)", width=1)),
         text=[fmt_brl0(v) for v in df_data[val_col]],
         textposition="outside", cliponaxis=False,
-        textfont=dict(size=11.5, color="#cfe0f2", family="JetBrains Mono"),
+        textfont=dict(size=17, color="#f1f6fc", family="JetBrains Mono"),
         hovertemplate="<b>%{x}</b><br>Valor: %{text}<extra></extra>", yaxis="y1",
     ))
     fig.add_trace(go.Scatter(
         x=df_data[x_col], y=df_data[qtd_col], mode="lines", showlegend=False,
-        line=dict(color=linha_cor, width=8, shape="spline"),
-        opacity=0.13, hoverinfo="skip", yaxis="y2",
+        line=dict(color=linha_cor, width=18, shape="spline"),
+        opacity=0.15, hoverinfo="skip", yaxis="y2",
     ))
     fig.add_trace(go.Scatter(
         x=df_data[x_col], y=df_data[qtd_col], name=linha_nome,
         mode="lines+markers+text",
         text=qtd_labels, textposition="top center",
-        textfont=dict(color=linha_texto, size=12.5, family="JetBrains Mono"),
-        line=dict(color=linha_cor, width=2, shape="spline"),
-        marker=dict(color=linha_ponto, size=7, line=dict(color=linha_cor, width=1.5)),
+        textfont=dict(color=linha_texto, size=18, family="JetBrains Mono"),
+        line=dict(color=linha_cor, width=3.4, shape="spline"),
+        marker=dict(color=linha_ponto, size=12, line=dict(color=linha_cor, width=2.5)),
         hovertemplate="<b>%{x}</b><br>" + linha_rotulo + ": %{y}<extra></extra>", yaxis="y2",
     ))
-    h = max(560, min(n * 48, 820))
+    h = max(640, min(n * 62, 1020))
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#b9c8dc", family="Inter"),
-        height=h, margin=dict(t=64, b=86, l=10, r=30),
-        hoverlabel=HOVER,
-        title=(dict(text=f"<span style='font-size:12px;color:#7c8ea8'>{periodo}</span>",
+        height=h, margin=dict(t=76, b=118, l=14, r=20),
+        hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
+                        font=dict(color="#e8f4ff", family="Inter", size=14), align="left"),
+        title=(dict(text=f"<span style='font-size:14px;color:#7c8ea8'>{periodo}</span>",
                     x=0.5, xanchor="center", y=0.985) if periodo else None),
-        bargap=0.34,
-        xaxis=dict(tickfont=dict(color="#a9bcd4", size=12, family="JetBrains Mono"),
-                   gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
+        bargap=0.22, separators=",.",
+        xaxis=dict(tickfont=dict(color="#cfe0f2", size=15, family="JetBrains Mono"),
+                   gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.12)",
                    zeroline=False, tickangle=-38, automargin=True),
-        yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
+        yaxis=dict(title=dict(text="Valor (R$)",
+                              font=dict(color="#8fa3bd", size=14, family="Inter")),
+                   showticklabels=True, tickprefix="R$ ", tickformat=",.0f", nticks=5,
+                   tickfont=dict(color="#8fa3bd", size=13, family="JetBrains Mono"),
+                   gridcolor=GRID, zeroline=False,
                    side="left", range=[0, max_val * 1.45]),
-        yaxis2=dict(showticklabels=False, overlaying="y", side="right", showgrid=False,
+        yaxis2=dict(title=dict(text=linha_rotulo,
+                               font=dict(color=linha_texto, size=14, family="Inter")),
+                    showticklabels=True, nticks=4,
+                    tickfont=dict(color=linha_texto, size=13, family="JetBrains Mono"),
+                    overlaying="y", side="right", showgrid=False,
                     zeroline=False, range=[0, max_qtd * 2.9]),
         legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
-                    font=dict(color="#8fa3bd", size=12),
-                    orientation="h", x=0.5, xanchor="center", y=1.10,
-                    itemsizing="constant"),
+                    font=dict(color="#b9c8dc", size=15),
+                    orientation="h", x=0.5, xanchor="center", y=1.08,
+                    itemsizing="constant", itemwidth=44, tracegroupgap=24),
     )
     return fig
 
@@ -943,8 +965,8 @@ if pagina == "Dashboard":
                 make_combo_chart(df_placa, COL_PLACA, "Valor", "Qtd", "", "", ramp(len(df_placa))),
                 use_container_width=True)
             st.markdown(
-                '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.7rem;color:#4e5f78;'
-                'margin-top:-14px;padding-left:4px;">'
+                '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
+                'margin-top:-10px;padding-left:6px;">'
                 '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
                 '<span style="color:#fcd34d;">● Linha: notas devolvidas</span></div>',
                 unsafe_allow_html=True)
@@ -963,8 +985,8 @@ if pagina == "Dashboard":
                              linha_ponto="#d1fae5", linha_texto="#a7f3d0", linha_rotulo="Clientes"),
             use_container_width=True)
         st.markdown(
-            '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.7rem;color:#4e5f78;'
-            'margin-top:-14px;padding-left:4px;">'
+            '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
+            'margin-top:-10px;padding-left:6px;">'
             '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
             '<span style="color:#6ee7b7;">● Linha: clientes únicos atendidos pelo veículo</span></div>',
             unsafe_allow_html=True)
@@ -990,20 +1012,22 @@ if pagina == "Dashboard":
         ))
         fig_acum.update_layout(
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#b9c8dc", family="Inter", size=11),
-            height=340, margin=dict(t=10, b=30, l=8, r=8), hoverlabel=HOVER,
+            font=dict(color="#b9c8dc", family="Inter", size=14),
+            height=420, margin=dict(t=14, b=44, l=10, r=10),
+            hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
+                            font=dict(color="#e8f4ff", family="Inter", size=14)),
             separators=",.",
-            xaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), showgrid=False,
-                       linecolor="rgba(120,170,225,0.10)"),
-            yaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), tickprefix="R$ ",
+            xaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), showgrid=False,
+                       linecolor="rgba(120,170,225,0.12)"),
+            yaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), tickprefix="R$ ",
                        gridcolor=GRID, tickformat=",.0f", zeroline=False),
             showlegend=False,
         )
         st.plotly_chart(fig_acum, use_container_width=True)
         st.markdown(
-            f'<p style="font-size:0.74rem;color:#7c8ea8;text-align:center;margin-top:-12px;">'
-            f'Hoje <b class="num" style="color:#fbbf24;">{fmt_brl0(valor_hoje)}</b> &nbsp;·&nbsp; '
-            f'Mês <b class="num" style="color:#34d399;">{fmt_brl0(total_mes)}</b></p>',
+            f'<p style="font-size:0.95rem;color:#9fb2c9;text-align:center;margin-top:-8px;">'
+            f'Hoje <b class="num" style="color:#fbbf24;font-size:1.15rem;">{fmt_brl0(valor_hoje)}</b>'
+            f' &nbsp;·&nbsp; Mês <b class="num" style="color:#34d399;font-size:1.15rem;">{fmt_brl0(total_mes)}</b></p>',
             unsafe_allow_html=True)
     else:
         st.info("Nenhum lançamento no mês corrente ainda.")
@@ -1027,17 +1051,20 @@ if pagina == "Dashboard":
             hovertemplate="<b>%{x}</b><br>Notas: %{y}<extra></extra>"))
         fig_ev.update_layout(
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#b9c8dc", family="Inter", size=11),
-            height=340, margin=dict(t=10, b=30, l=8, r=8), hoverlabel=HOVER,
-            bargap=0.42, separators=",.",
-            xaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), showgrid=False,
-                       linecolor="rgba(120,170,225,0.10)"),
-            yaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), tickprefix="R$ ",
+            font=dict(color="#b9c8dc", family="Inter", size=14),
+            height=420, margin=dict(t=16, b=44, l=10, r=10),
+            hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
+                            font=dict(color="#e8f4ff", family="Inter", size=14)),
+            bargap=0.34, separators=",.",
+            xaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), showgrid=False,
+                       linecolor="rgba(120,170,225,0.12)"),
+            yaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), tickprefix="R$ ",
                        gridcolor=GRID, tickformat=",.0f", zeroline=False),
             yaxis2=dict(overlaying="y", side="right", showgrid=False,
-                        tickfont=dict(size=11, color="#a78bfa"), zeroline=False),
-            legend=dict(orientation="h", x=1, xanchor="right", y=1.14,
-                        bgcolor="rgba(0,0,0,0)", font=dict(size=11, color="#7c8ea8")),
+                        tickfont=dict(size=14, color="#a78bfa"), zeroline=False),
+            legend=dict(orientation="h", x=1, xanchor="right", y=1.12,
+                        bgcolor="rgba(0,0,0,0)", font=dict(size=14, color="#9fb2c9"),
+                        itemsizing="constant", itemwidth=40),
         )
         st.plotly_chart(fig_ev, use_container_width=True)
     else:
