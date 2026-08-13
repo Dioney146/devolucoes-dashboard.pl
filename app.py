@@ -836,7 +836,9 @@ if pagina == "Dashboard":
     delta_val = None
     if usar_data and dt_sel:
         _prev = dt_sel - pd.Timedelta(days=7)
-        _tot_prev = df_raw[df_raw["_DTENTREGA_DT"].dt.date == _prev.date()][VALOR_COL].sum()
+        if hasattr(_prev, "date"):
+            _prev = _prev.date()
+        _tot_prev = df_raw[df_raw["_DTENTREGA_DT"].dt.date == _prev][VALOR_COL].sum()
         if _tot_prev > 0:
             _p = (total_val - _tot_prev) / _tot_prev * 100
             delta_val = (f"{_p:+.1f}%", "up" if _p > 0 else "down" if _p < 0 else "flat")
