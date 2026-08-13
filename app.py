@@ -767,6 +767,53 @@ if pagina in PAGS_COM_FILTRO:
 # ═════════════════════════════════════════════════════════════════════════════
 # FUNÇÕES DE GRÁFICO
 # ═════════════════════════════════════════════════════════════════════════════
+def anotar_linha(fig, xs, ys, ref_pxs, plot_h, frac_scale, cor, size,
+                 yaxis="y2", ocupados=None, gap=30, fmt=lambda v: f"<b>{int(v)}</b>"):
+    """Posiciona os números de uma linha evitando colisões, em pixels.
+
+    ref_pxs  : altura (px) já ocupada por outros rótulos naquele x (ex.: o valor
+               da barra). O rótulo da linha se afasta quando ficaria em cima.
+    ocupados : lista acumulada de (x, px) de rótulos já posicionados, para que
+               séries diferentes no mesmo gráfico também não se sobreponham.
+
+    Nada aqui altera os dados — apenas escolhe acima/abaixo e o deslocamento.
+    """
+    if ocupados is None:
+        ocupados = []
+    # Candidatos ordenados do mais próximo do ponto para o mais distante.
+    # Cada item é (deslocamento vertical, deslocamento horizontal) em pixels:
+    # primeiro acima, depois abaixo, depois deslocando para os lados e só então
+    # afastando na vertical — assim o número nunca perde o vínculo com o ponto.
+    CANDIDATOS = [(24, 0), (-26, 0), (24, 30), (24, -30), (-26, 30), (-26, -30),
+                  (40, 0), (-42, 0), (56, 0), (72, 0), (88, 0)]
+    for i, (x, y) in enumerate(zip(xs, ys)):
+        ponto_px = float(y) * frac_scale * plot_h
+        conflitos = [px for xx, px, dx in ocupados if xx == x]
+        if ref_pxs is not None:
+            conflitos.extend(ref_pxs[i] if isinstance(ref_pxs[i], list) else [ref_pxs[i]])
+
+        dy, dx = CANDIDATOS[0]
+        for cy, cx in CANDIDATOS:
+            alvo = ponto_px + cy
+            if alvo < 12 or alvo > plot_h - 14:      # respeita as bordas do gráfico
+                continue
+            livre = all(abs(alvo - c) >= gap or cx != 0 for c in conflitos)
+            livre = livre and all(abs(alvo - px) >= gap or cx != ddx
+                                  for xx, px, ddx in ocupados if xx == x)
+            if livre:
+                dy, dx = cy, cx
+                break
+
+        ocupados.append((x, ponto_px + dy, dx))
+        fig.add_annotation(
+            x=x, y=y, xref="x", yref=yaxis, text=fmt(y), showarrow=False,
+            yshift=dy, xshift=dx,
+            font=dict(color=cor, size=size, family="JetBrains Mono"),
+            bgcolor="rgba(6,11,22,0.62)", borderpad=3, bordercolor="rgba(0,0,0,0)",
+        )
+    return ocupados
+
+
 def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None,
                      linha_nome="Quantidade (notas)", linha_cor="#fbbf24",
                      linha_ponto="#fde68a", linha_texto="#fcd34d", linha_rotulo="Notas"):
@@ -784,15 +831,6 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
     max_val = df_data[val_col].max() if len(df_data) > 0 else 1
     max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
 
-    # Evita colisão entre o rótulo da linha e o topo da barra
-    qtd_labels = []
-    for val, qtd in zip(df_data[val_col], df_data[qtd_col]):
-        bar_pos = float(val) / (max_val * 1.45) if max_val > 0 else 0
-        line_pos = float(qtd) / (max_qtd * 2.9) if max_qtd > 0 else 0
-        if abs(bar_pos - line_pos) < 0.09:
-            qtd_labels.append(f"<b>{int(qtd)}</b><br> ")
-        else:
-            qtd_labels.append(f"<b>{int(qtd)}</b>")
 
     fig.add_trace(go.Bar(
         x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
@@ -810,9 +848,7 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
     ))
     fig.add_trace(go.Scatter(
         x=df_data[x_col], y=df_data[qtd_col], name=linha_nome,
-        mode="lines+markers+text",
-        text=qtd_labels, textposition="top center",
-        textfont=dict(color=linha_texto, size=18, family="JetBrains Mono"),
+        mode="lines+markers",
         line=dict(color=linha_cor, width=3.4, shape="spline"),
         marker=dict(color=linha_ponto, size=12, line=dict(color=linha_cor, width=2.5)),
         hovertemplate="<b>%{x}</b><br>" + linha_rotulo + ": %{y}<extra></extra>", yaxis="y2",
@@ -847,6 +883,16 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
                     orientation="h", x=0.5, xanchor="center", y=1.08,
                     itemsizing="constant", itemwidth=44, tracegroupgap=24),
     )
+
+    # ── Rótulos da linha: posicionados dinamicamente para não colidir ───────
+    plot_h = h - 76 - 118  # altura útil (altura total menos margens)
+    # Altura aproximada, em px, já ocupada pelo rótulo do valor da barra
+    ref_barra = [float(v) / (max_val * 1.45) * plot_h + 20 if max_val > 0 else 20
+                 for v in df_data[val_col]]
+    anotar_linha(fig, list(df_data[x_col]), list(df_data[qtd_col]),
+                 ref_pxs=ref_barra, plot_h=plot_h,
+                 frac_scale=(1 / (max_qtd * 2.9)) if max_qtd > 0 else 0,
+                 cor=linha_texto, size=18, gap=32)
     return fig
 
 
@@ -1182,17 +1228,6 @@ if pagina == "Dashboard":
                 max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
                 max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
 
-                # Rótulos da quantidade: afasta o texto quando ele encostaria
-                # no topo da barra, evitando sobreposição.
-                lab_ref, lab_ant = [], []
-                for va, vs, qa, qs in zip(df_comp["Valor_Atual"], df_comp["Valor_Semana"],
-                                          df_comp["Qtd_Atual"], df_comp["Qtd_Semana"]):
-                    bar_ref = float(va) / (max_val_comp * 1.55)
-                    bar_ant = float(vs) / (max_val_comp * 1.55)
-                    ln_ref = float(qa) / (max_qtd_comp * 3.6)
-                    ln_ant = float(qs) / (max_qtd_comp * 3.6)
-                    lab_ref.append(f"<b>{int(qa)}</b><br> " if abs(bar_ref - ln_ref) < 0.08 else f"<b>{int(qa)}</b>")
-                    lab_ant.append(f"<b>{int(qs)}</b><br> " if abs(bar_ant - ln_ant) < 0.08 else f"<b>{int(qs)}</b>")
 
                 fig_comp = go.Figure()
                 fig_comp.add_trace(go.Bar(
@@ -1201,7 +1236,7 @@ if pagina == "Dashboard":
                     marker=dict(color="rgba(96,165,250,0.42)",
                                 line=dict(color="rgba(96,165,250,0.55)", width=1)),
                     text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]], textposition="outside",
-                    textfont=dict(size=11, color="#9dc2f7", family="JetBrains Mono"),
+                    textfont=dict(size=13, color="#9dc2f7", family="JetBrains Mono"),
                     customdata=cdata, hovertemplate=htmpl))
                 fig_comp.add_trace(go.Bar(
                     x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
@@ -1209,23 +1244,19 @@ if pagina == "Dashboard":
                     marker=dict(color="rgba(52,211,153,0.72)",
                                 line=dict(color="rgba(52,211,153,0.85)", width=1)),
                     text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]], textposition="outside",
-                    textfont=dict(size=12, color="#eaf6ff", family="JetBrains Mono"),
+                    textfont=dict(size=14.5, color="#f1f6fc", family="JetBrains Mono"),
                     customdata=cdata, hovertemplate=htmpl))
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
-                    name="Semana passada", mode="lines+markers+text",
-                    text=lab_ant, textposition="bottom center",
-                    textfont=dict(color="#fca5a5", size=10, family="JetBrains Mono"),
-                    line=dict(color="#f87171", width=1.5, dash="dot", shape="spline"),
-                    marker=dict(color="#fca5a5", size=6, line=dict(color="rgba(4,7,15,0.9)", width=1)),
+                    name="Semana passada", mode="lines+markers",
+                    line=dict(color="#f87171", width=2, dash="dot", shape="spline"),
+                    marker=dict(color="#fca5a5", size=8, line=dict(color="rgba(4,7,15,0.9)", width=1.5)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
-                    name="Essa semana", mode="lines+markers+text",
-                    text=lab_ref, textposition="top center",
-                    textfont=dict(color="#fcd34d", size=11, family="JetBrains Mono"),
-                    line=dict(color="#fbbf24", width=2, shape="spline"),
-                    marker=dict(color="#fde68a", size=7, line=dict(color="rgba(4,7,15,0.9)", width=1)),
+                    name="Essa semana", mode="lines+markers",
+                    line=dict(color="#fbbf24", width=2.6, shape="spline"),
+                    marker=dict(color="#fde68a", size=9, line=dict(color="rgba(4,7,15,0.9)", width=1.5)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
 
                 fig_comp.update_layout(
@@ -1257,6 +1288,21 @@ if pagina == "Dashboard":
                                 orientation="h", x=0.5, xanchor="center", y=1.11,
                                 itemsizing="constant"),
                 )
+                # ── Rótulos das duas linhas, posicionados sem colisão ───────
+                _h_comp = max(460, min(n_comp * 52, 700))
+                _plot_h = _h_comp - 58 - 86
+                _ref_barras = [
+                    [float(va) / (max_val_comp * 1.55) * _plot_h + 18,
+                     float(vs) / (max_val_comp * 1.55) * _plot_h + 18]
+                    for va, vs in zip(df_comp["Valor_Atual"], df_comp["Valor_Semana"])]
+                _fs = (1 / (max_qtd_comp * 3.6)) if max_qtd_comp > 0 else 0
+                _ocup = anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Atual"]),
+                                     ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
+                                     cor="#fcd34d", size=14, gap=26)
+                anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Semana"]),
+                             ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
+                             cor="#fca5a5", size=14, ocupados=_ocup, gap=26)
+
                 st.plotly_chart(fig_comp, use_container_width=True,
                                 config={"displayModeBar": False})
 
