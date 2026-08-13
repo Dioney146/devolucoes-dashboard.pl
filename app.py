@@ -754,15 +754,25 @@ if pagina in PAGS_COM_FILTRO:
 # ═════════════════════════════════════════════════════════════════════════════
 # FUNÇÕES DE GRÁFICO
 # ═════════════════════════════════════════════════════════════════════════════
-def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None):
-    """Barras = Valor (R$) · Linha = Quantidade. Mesmos dados, apresentação limpa."""
+def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None,
+                     cli_col=None):
+    """Barras = Valor (R$) · Linha amarela = Quantidade · Linha verde = Clientes.
+
+    A série de clientes é opcional (cli_col) e compartilha a escala do eixo
+    direito com a quantidade. Nenhum dado é transformado aqui — a função apenas
+    desenha as colunas que recebe.
+    """
     n = len(df_data)
     if bar_colors is None:
         bar_colors = ramp(n)
     fig = go.Figure()
 
+    tem_cli = cli_col is not None and cli_col in df_data.columns
+
     max_val = df_data[val_col].max() if len(df_data) > 0 else 1
     max_qtd = df_data[qtd_col].max() if len(df_data) > 0 else 1
+    if tem_cli and len(df_data) > 0:
+        max_qtd = max(max_qtd, df_data[cli_col].max())
 
     # Evita colisão entre o rótulo da linha e o topo da barra
     qtd_labels = []
@@ -774,6 +784,14 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         else:
             qtd_labels.append(f"<b>{qtd}</b>")
 
+    # Rótulos de clientes: afasta quando encostariam no número da quantidade
+    cli_labels = []
+    if tem_cli:
+        for qtd, cli in zip(df_data[qtd_col], df_data[cli_col]):
+            q_pos = float(qtd) / (max_qtd * 3.8) if max_qtd > 0 else 0
+            c_pos = float(cli) / (max_qtd * 3.8) if max_qtd > 0 else 0
+            cli_labels.append(f" <br><b>{int(cli)}</b>" if abs(q_pos - c_pos) < 0.05 else f"<b>{int(cli)}</b>")
+
     fig.add_trace(go.Bar(
         x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
         marker=dict(color=bar_colors, opacity=0.92,
@@ -784,14 +802,30 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         hovertemplate="<b>%{x}</b><br>Valor: %{text}<extra></extra>", yaxis="y1",
     ))
     fig.add_trace(go.Scatter(
-        x=df_data[x_col], y=df_data[qtd_col], name="Quantidade",
+        x=df_data[x_col], y=df_data[qtd_col], name="Quantidade (notas)",
         mode="lines+markers+text",
         text=qtd_labels, textposition="top center",
         textfont=dict(color="#fcd34d", size=12, family="JetBrains Mono"),
         line=dict(color="#fbbf24", width=2, shape="spline"),
         marker=dict(color="#fde68a", size=7, line=dict(color="#fbbf24", width=1.5)),
-        hovertemplate="<b>%{x}</b><br>Quantidade: %{y}<extra></extra>", yaxis="y2",
+        hovertemplate="<b>%{x}</b><br>Notas: %{y}<extra></extra>", yaxis="y2",
     ))
+    if tem_cli:
+        # Halo suave sob a linha verde — só efeito visual, mesmos pontos.
+        fig.add_trace(go.Scatter(
+            x=df_data[x_col], y=df_data[cli_col], mode="lines", showlegend=False,
+            line=dict(color="rgba(52,211,153,0.16)", width=8, shape="spline"),
+            hoverinfo="skip", yaxis="y2",
+        ))
+        fig.add_trace(go.Scatter(
+            x=df_data[x_col], y=df_data[cli_col], name="Clientes por veículo",
+            mode="lines+markers+text",
+            text=cli_labels, textposition="bottom center",
+            textfont=dict(color="#6ee7b7", size=12, family="JetBrains Mono"),
+            line=dict(color="#34d399", width=2, shape="spline", dash="dot"),
+            marker=dict(color="#a7f3d0", size=7, line=dict(color="#34d399", width=1.5)),
+            hovertemplate="<b>%{x}</b><br>Clientes: %{y}<extra></extra>", yaxis="y2",
+        ))
     h = max(500, min(n * 44, 760))
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -810,7 +844,8 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
                     zeroline=False, range=[0, max_qtd * 3.8]),
         legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
                     font=dict(color="#8fa3bd", size=12),
-                    orientation="h", x=1.0, xanchor="right", y=1.10),
+                    orientation="h", x=0.5, xanchor="center", y=1.10,
+                    itemsizing="constant"),
     )
     return fig
 
@@ -917,20 +952,26 @@ if pagina == "Dashboard":
     with col_graf:
         periodo = (f"DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel
                    else "Todos os períodos")
-        panel_open("Devoluções por placa — valor e quantidade", tag=periodo, icon="🚚")
+        panel_open("Devoluções por placa — valor, notas e clientes", tag=periodo, icon="🚚")
         if COL_PLACA:
+            _aggs = dict(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+            if COL_CLIENTE:
+                # Clientes únicos por placa, a partir da mesma base já filtrada.
+                _aggs["Clientes"] = (COL_CLIENTE, "nunique")
             df_placa = (df[df[COL_PLACA].str.strip() != ""]
-                        .groupby(COL_PLACA).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                        .groupby(COL_PLACA).agg(**_aggs)
                         .reset_index().sort_values("Valor", ascending=False))
             if not df_placa.empty:
                 st.plotly_chart(
-                    make_combo_chart(df_placa, COL_PLACA, "Valor", "Qtd", "", periodo, ramp(len(df_placa))),
+                    make_combo_chart(df_placa, COL_PLACA, "Valor", "Qtd", "", periodo, ramp(len(df_placa)),
+                                     cli_col="Clientes" if COL_CLIENTE else None),
                     use_container_width=True)
                 st.markdown(
                     '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.7rem;color:#4e5f78;'
                     'margin-top:-14px;padding-left:4px;">'
-                    '<span>● Top 5 crítico</span><span>● 6–10 atenção</span>'
-                    '<span>● Demais</span><span>● Linha: quantidade de notas</span></div>',
+                    '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
+                    '<span style="color:#fcd34d;">● Notas devolvidas</span>'
+                    '<span style="color:#6ee7b7;">● Clientes únicos</span></div>',
                     unsafe_allow_html=True)
             else:
                 st.info("Nenhuma placa no filtro atual. Ajuste a data ou limpe os filtros.")
