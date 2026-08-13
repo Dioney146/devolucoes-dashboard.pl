@@ -165,15 +165,6 @@ RED   = ["#7f1d1d","#b91c1c","#ef4444","#fca5a5"]
 GREEN = ["#14532d","#15803d","#22c55e","#86efac","#bbf7d0"]
 MIXED = ["#0ea5e9","#22c55e","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","#f97316"]
 
-# ── Mapeamento de Veículos → Equipe (EDITE AQUI conforme sua operação) ────────
-# Preencha com a PLACA real (como aparece na planilha) e o nome da equipe/AM
-# responsável por aquele veículo. As placas não cadastradas aqui aparecerão
-# como "—" na legenda lateral do gráfico "Por Placa".
-PLACA_EQUIPE = {
-    # "NPB1J08": "Equipe Norte",
-    # "ABC1D23": "Equipe Sul",
-}
-
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 SHEET_ID       = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
 GSHEETS_URL    = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&id={SHEET_ID}"
@@ -284,15 +275,6 @@ if COL_DTENTREGA:
             df_raw.loc[mask_nat, COL_DTENTREGA], format="%Y-%m-%d", errors="coerce")
 else:
     df_raw["_DTENTREGA_DT"] = pd.NaT
-
-# ── Apelidos de veículos (Caminhão 01, 02, ...) — ordem estável por placa ────
-APELIDO_PLACA = {}
-if COL_PLACA:
-    _placas_unicas = sorted([p for p in df_raw[COL_PLACA].unique() if p.strip() != ""])
-    APELIDO_PLACA = {p: f"Caminhão {str(i+1).zfill(2)}" for i, p in enumerate(_placas_unicas)}
-
-def apelido_placa(p):
-    return APELIDO_PLACA.get(p, p)
 
 # ── Normaliza colunas reentregas ──────────────────────────────────────────────
 REENT_COLS_MAP = {
@@ -625,15 +607,13 @@ with tab_dash:
         )
         return fig
 
-    # Gráfico principal: PLACA (com apelidos, legenda de equipe e acumulado mensal)
+    # Gráfico principal: PLACA (com acumulado mensal e comparação semanal)
     st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Devoluções por PLACA — Valor e Quantidade</h3></div>', unsafe_allow_html=True)
     if COL_PLACA:
         df_placa = (df[df[COL_PLACA].str.strip()!=""]
                     .groupby(COL_PLACA).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
                     .reset_index().sort_values("Valor",ascending=False))
         if not df_placa.empty:
-            df_placa["Apelido"] = df_placa[COL_PLACA].apply(apelido_placa)
-
             # ── Acumulado mensal (1º dia do mês corrente até hoje) ───────────
             hoje = date.today()
             primeiro_dia_mes = hoje.replace(day=1)
@@ -645,36 +625,14 @@ with tab_dash:
             else:
                 df_mes = pd.DataFrame()
 
-            col_graf, col_equipe, col_acum = st.columns([3, 1.1, 1.5], gap="medium")
+            col_graf, col_acum = st.columns([3, 1.5], gap="medium")
 
             with col_graf:
                 n = len(df_placa)
                 bc = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
                 periodo = f"Data DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel else "Todos os períodos"
-                st.plotly_chart(make_combo_chart(df_placa,"Apelido","Valor","Qtd","",periodo,bc), use_container_width=True)
+                st.plotly_chart(make_combo_chart(df_placa,COL_PLACA,"Valor","Qtd","",periodo,bc), use_container_width=True)
                 st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 5 — crítico</span><span>🟠 6–10 — atenção</span><span>🔵 Demais</span><span>🟡 Linha = quantidade</span></div>', unsafe_allow_html=True)
-
-            with col_equipe:
-                st.markdown('<div style="font-family:\'Bebas Neue\',sans-serif;font-size:0.82rem;color:#7dd3fc;letter-spacing:0.06em;margin-bottom:10px;">🧑‍🤝‍🧑 VEÍCULO × EQUIPE</div>', unsafe_allow_html=True)
-                rows_eq = ""
-                for i, r in enumerate(df_placa.itertuples()):
-                    equipe = PLACA_EQUIPE.get(getattr(r, COL_PLACA), "—")
-                    bg = "rgba(14,165,233,0.06)" if i % 2 == 0 else "rgba(0,0,0,0)"
-                    rows_eq += (
-                        f'<tr style="background:{bg};">'
-                        f'<td style="padding:8px 10px;border-bottom:1px solid rgba(56,189,248,0.08);">'
-                        f'<div style="color:#7dd3fc;font-size:0.76rem;font-weight:700;">{r.Apelido}</div>'
-                        f'<div style="color:#64748b;font-size:0.65rem;">🚚 {getattr(r, COL_PLACA)}</div>'
-                        f'<div style="color:#94a3b8;font-size:0.68rem;">👥 {equipe}</div>'
-                        f'</td></tr>'
-                    )
-                st.markdown(
-                    f'<div style="background:rgba(6,13,31,0.92);border:1px solid rgba(56,189,248,0.15);'
-                    f'border-radius:12px;overflow:hidden;max-height:520px;overflow-y:auto;">'
-                    f'<table style="width:100%;border-collapse:collapse;">{rows_eq}</table></div>',
-                    unsafe_allow_html=True
-                )
-                st.caption("Edite o dicionário PLACA_EQUIPE no início do código para vincular cada placa à sua equipe.")
 
             with col_acum:
                 st.markdown(f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:0.82rem;color:#7dd3fc;letter-spacing:0.06em;margin-bottom:10px;">📈 ACUMULADO — {hoje.strftime("%m/%Y")}</div>', unsafe_allow_html=True)
@@ -714,6 +672,87 @@ with tab_dash:
                     )
                 else:
                     st.info("Sem dados no mês corrente.")
+
+            # ── Comparação por PLACA: dia de referência × mesmo dia da semana passada ──
+            st.markdown("---")
+            dia_ref = dt_sel if (usar_data and dt_sel) else date.today()
+            dia_sem_passada = dia_ref - pd.Timedelta(days=7)
+            dias_semana_pt = ["Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado","Domingo"]
+            nome_dia = dias_semana_pt[dia_ref.weekday()]
+
+            st.markdown(
+                f'<div class="sec-header"><div class="bar"></div>'
+                f'<h3>📆 Comparação por PLACA — {nome_dia}: {dia_ref.strftime("%d/%m/%Y")} × {dia_sem_passada.strftime("%d/%m/%Y")}</h3></div>',
+                unsafe_allow_html=True
+            )
+
+            if "_DTENTREGA_DT" in df_raw.columns:
+                df_atual_dia = df_raw[
+                    (df_raw["_DTENTREGA_DT"].dt.date == dia_ref) & (df_raw[COL_PLACA].str.strip()!="")
+                ].groupby(COL_PLACA).agg(Valor=(VALOR_COL,"sum"), Qtd=(VALOR_COL,"count")).reset_index()
+                df_semana_dia = df_raw[
+                    (df_raw["_DTENTREGA_DT"].dt.date == dia_sem_passada) & (df_raw[COL_PLACA].str.strip()!="")
+                ].groupby(COL_PLACA).agg(Valor=(VALOR_COL,"sum"), Qtd=(VALOR_COL,"count")).reset_index()
+            else:
+                df_atual_dia = pd.DataFrame(columns=[COL_PLACA,"Valor","Qtd"])
+                df_semana_dia = pd.DataFrame(columns=[COL_PLACA,"Valor","Qtd"])
+
+            todas_placas_comp = sorted(set(df_atual_dia[COL_PLACA]).union(set(df_semana_dia[COL_PLACA])))
+
+            if todas_placas_comp:
+                df_comp = pd.DataFrame({COL_PLACA: todas_placas_comp})
+                df_comp = df_comp.merge(df_atual_dia.rename(columns={"Valor":"Valor_Atual","Qtd":"Qtd_Atual"}), on=COL_PLACA, how="left")
+                df_comp = df_comp.merge(df_semana_dia.rename(columns={"Valor":"Valor_Semana","Qtd":"Qtd_Semana"}), on=COL_PLACA, how="left")
+                df_comp[["Valor_Atual","Qtd_Atual","Valor_Semana","Qtd_Semana"]] = df_comp[["Valor_Atual","Qtd_Atual","Valor_Semana","Qtd_Semana"]].fillna(0)
+                df_comp = df_comp.sort_values("Valor_Atual", ascending=False)
+
+                fig_comp = go.Figure()
+                fig_comp.add_trace(go.Bar(
+                    x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
+                    name=f"{dia_sem_passada.strftime('%d/%m')} (semana passada)",
+                    marker=dict(color="#475569", opacity=0.85, line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
+                    text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]],
+                    textposition="outside", textfont=dict(size=12, color="#cbd5e1", family="DM Mono"),
+                    hovertemplate="<b>%{x}</b><br>Semana passada: <b>%{text}</b><extra></extra>",
+                ))
+                fig_comp.add_trace(go.Bar(
+                    x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
+                    name=f"{dia_ref.strftime('%d/%m')} (referência)",
+                    marker=dict(color="#0ea5e9", opacity=0.92, line=dict(color="rgba(255,255,255,0.08)", width=0.5)),
+                    text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]],
+                    textposition="outside", textfont=dict(size=12, color="#ffffff", family="DM Mono"),
+                    hovertemplate="<b>%{x}</b><br>Referência: <b>%{text}</b><extra></extra>",
+                ))
+                n_comp = len(df_comp)
+                fig_comp.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.32)",
+                    font=dict(color="#c8d8e8", family="Space Grotesk"),
+                    height=max(440, min(n_comp*50, 680)),
+                    margin=dict(t=20, b=100, l=12, r=20),
+                    barmode="group", bargap=0.28, bargroupgap=0.12,
+                    xaxis=dict(tickfont=dict(color="#d0dce8", size=13, family="DM Mono"),
+                               gridcolor="rgba(0,0,0,0)", linecolor="rgba(0,0,0,0)",
+                               zeroline=False, tickangle=-38, automargin=True),
+                    yaxis=dict(showticklabels=False, gridcolor="rgba(0,0,0,0)", zeroline=False),
+                    legend=dict(bgcolor="rgba(8,15,35,0.92)", bordercolor="rgba(56,189,248,0.2)",
+                                borderwidth=1, font=dict(color="#c8d8e8", size=13),
+                                orientation="h", x=0.5, xanchor="center", y=1.10),
+                )
+                st.plotly_chart(fig_comp, use_container_width=True)
+
+                total_atual = df_comp["Valor_Atual"].sum()
+                total_semana = df_comp["Valor_Semana"].sum()
+                var_pct = ((total_atual - total_semana) / total_semana * 100) if total_semana > 0 else 0
+                seta = "🔺" if var_pct > 0 else ("🔻" if var_pct < 0 else "➖")
+                st.markdown(
+                    f'<p style="font-size:0.78rem;color:#94a3b8;padding:0 4px 6px;">'
+                    f'📌 Total {dia_ref.strftime("%d/%m")}: <b style="color:#38bdf8;">{fmt_brl0(total_atual)}</b> · '
+                    f'Total {dia_sem_passada.strftime("%d/%m")}: <b style="color:#94a3b8;">{fmt_brl0(total_semana)}</b> · '
+                    f'Variação: <b style="color:{"#ef4444" if var_pct>0 else "#4ade80"};">{seta} {var_pct:+.1f}%</b></p>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.info("Sem dados de PLACA para as datas comparadas.")
         else:
             st.info("Sem dados de PLACA para o filtro selecionado")
     else:
