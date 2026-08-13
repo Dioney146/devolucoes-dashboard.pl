@@ -368,10 +368,10 @@ def plotly_dark(fig, height=None, margin_b=40):
              font=dict(color="#b9c8dc", family="Inter"), coloraxis_showscale=False,
              margin=dict(t=18, b=margin_b, l=8, r=12),
              hoverlabel=HOVER,
-             xaxis=dict(tickfont=dict(color="#8fa3bd", size=12, family="Inter"),
-                        gridcolor=GRID, linecolor="rgba(120,170,225,0.10)", zeroline=False),
-             yaxis=dict(tickfont=dict(color="#8fa3bd", size=12),
-                        gridcolor=GRID, linecolor="rgba(120,170,225,0.10)", zeroline=False),
+             xaxis=dict(showticklabels=False, gridcolor=GRID,
+                        linecolor="rgba(120,170,225,0.10)", zeroline=False),
+             yaxis=dict(showticklabels=False, gridcolor=GRID,
+                        linecolor="rgba(120,170,225,0.10)", zeroline=False),
              legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
                          font=dict(color="#b9c8dc", size=13),
                          orientation="h", x=0, xanchor="left", y=1.08))
@@ -859,11 +859,12 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#b9c8dc", family="Inter"),
         height=h, margin=dict(t=76, b=118, l=8, r=12),
+        bargroupgap=0.08,
         hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
                         font=dict(color="#e8f4ff", family="Inter", size=14), align="left"),
-        title=(dict(text=f"<span style='font-size:14px;color:#7c8ea8'>{periodo}</span>",
-                    x=0.5, xanchor="center", y=0.985) if periodo else None),
-        bargap=0.22, separators=",.",
+        title=dict(text=(f"<span style='font-size:14px;color:#7c8ea8'>{periodo}</span>"
+                         if periodo else ""), x=0.5, xanchor="center", y=0.985),
+        bargap=0.48, separators=",.",
         xaxis=dict(tickfont=dict(color="#cfe0f2", size=15, family="JetBrains Mono"),
                    gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.12)",
                    zeroline=False, tickangle=-38, automargin=True),
@@ -907,9 +908,9 @@ def make_bar_simple(df_data, x_col, y_col, bar_colors, title_txt="", ylabel="Qtd
         font=dict(color="#b9c8dc", family="Inter"),
         height=h, margin=dict(t=40 if title_txt else 16, b=96, l=10, r=16),
         hoverlabel=HOVER,
-        title=dict(text=f"<span style='font-size:12px;color:#7c8ea8'>{title_txt}</span>",
-                   x=0.5, xanchor="center") if title_txt else None,
-        bargap=0.34,
+        title=dict(text=(f"<span style='font-size:12px;color:#7c8ea8'>{title_txt}</span>"
+                         if title_txt else ""), x=0.5, xanchor="center"),
+        bargap=0.48,
         xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
                    gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
                    zeroline=False, tickangle=-38, automargin=True),
@@ -1044,15 +1045,19 @@ if pagina == "Dashboard":
         fig_acum = go.Figure()
         fig_acum.add_trace(go.Scatter(
             x=df_mes_dia["_DIA"], y=df_mes_dia["Acumulado"],
-            mode="lines", fill="tozeroy",
-            line=dict(color="#22d3ee", width=2.2, shape="spline"),
+            mode="lines+markers+text", fill="tozeroy",
+            line=dict(color="#22d3ee", width=2.4, shape="spline"),
+            marker=dict(color="#a5f3fc", size=7, line=dict(color="#22d3ee", width=2)),
             fillcolor="rgba(34,211,238,0.10)",
+            text=[fmt_brl0(v) for v in df_mes_dia["Acumulado"]],
+            textposition="top center", cliponaxis=False,
+            textfont=dict(color="#a5f3fc", size=13, family="JetBrains Mono"),
             hovertemplate="<b>%{x}</b><br>Acumulado: R$ %{y:,.0f}<extra></extra>",
         ))
         fig_acum.update_layout(
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#b9c8dc", family="Inter", size=14),
-            height=420, margin=dict(t=14, b=44, l=10, r=10),
+            height=420, margin=dict(t=42, b=44, l=10, r=10),
             hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
                             font=dict(color="#e8f4ff", family="Inter", size=14)),
             separators=",.",
@@ -1078,31 +1083,46 @@ if pagina == "Dashboard":
                  .groupby("_DIA").agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
                  .reset_index().sort_values("_DIA"))
         fig_ev = go.Figure()
+        _max_val_ev = float(df_ev["Valor"].max()) if len(df_ev) else 1
+        _max_qtd_ev = float(df_ev["Qtd"].max()) if len(df_ev) else 1
         fig_ev.add_trace(go.Bar(
             x=df_ev["_DIA"], y=df_ev["Valor"], name="Valor (R$)",
-            marker=dict(color="rgba(34,211,238,0.5)", line=dict(width=0)),
+            marker=dict(color="rgba(34,211,238,0.5)",
+                        line=dict(color="rgba(165,243,252,0.25)", width=1)),
+            text=[fmt_brl0(v) for v in df_ev["Valor"]],
+            textposition="outside", cliponaxis=False,
+            textfont=dict(color="#cfe0f2", size=13, family="JetBrains Mono"),
             hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.0f}<extra></extra>"))
         fig_ev.add_trace(go.Scatter(
             x=df_ev["_DIA"], y=df_ev["Qtd"], name="Notas", yaxis="y2",
-            mode="lines+markers", line=dict(color="#a78bfa", width=2, shape="spline"),
-            marker=dict(color="#c4b5fd", size=6),
+            mode="lines+markers", line=dict(color="#fbbf24", width=2.6, shape="spline"),
+            marker=dict(color="#fde68a", size=8, line=dict(color="#fbbf24", width=2)),
             hovertemplate="<b>%{x}</b><br>Notas: %{y}<extra></extra>"))
         fig_ev.update_layout(
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#b9c8dc", family="Inter", size=14),
-            height=420, margin=dict(t=16, b=44, l=10, r=10),
+            height=420, margin=dict(t=42, b=44, l=10, r=10),
             hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
                             font=dict(color="#e8f4ff", family="Inter", size=14)),
-            bargap=0.34, separators=",.",
+            bargap=0.52, separators=",.",
             xaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), showgrid=False,
                        linecolor="rgba(120,170,225,0.12)"),
-            yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
+            yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
+                       range=[0, _max_val_ev * 1.30]),
             yaxis2=dict(overlaying="y", side="right", showgrid=False,
-                        showticklabels=False, zeroline=False),
+                        showticklabels=False, zeroline=False,
+                        range=[0, _max_qtd_ev * 1.55]),
             legend=dict(orientation="h", x=0, xanchor="left", y=1.12,
                         bgcolor="rgba(0,0,0,0)", font=dict(size=14, color="#9fb2c9"),
                         itemsizing="constant", itemwidth=40),
         )
+        _plot_h_ev = 420 - 42 - 44
+        _ref_ev = [float(v) / (_max_val_ev * 1.30) * _plot_h_ev + 18 if _max_val_ev > 0 else 18
+                   for v in df_ev["Valor"]]
+        anotar_linha(fig_ev, list(df_ev["_DIA"]), list(df_ev["Qtd"]),
+                     ref_pxs=_ref_ev, plot_h=_plot_h_ev,
+                     frac_scale=(1 / (_max_qtd_ev * 1.55)) if _max_qtd_ev > 0 else 0,
+                     cor="#fcd34d", size=14, gap=26)
         st.plotly_chart(fig_ev, use_container_width=True)
     else:
         st.info("Nenhum lançamento no mês corrente ainda.")
@@ -1260,7 +1280,7 @@ if pagina == "Dashboard":
                     hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
                                     font=dict(color="#e8f4ff", family="Inter", size=12.5),
                                     align="left"),
-                    barmode="group", bargap=0.40, bargroupgap=0.10,
+                    barmode="group", bargap=0.52, bargroupgap=0.10,
                     xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
                                showgrid=False, linecolor="rgba(120,170,225,0.12)",
                                zeroline=False, tickangle=-38, automargin=True),
