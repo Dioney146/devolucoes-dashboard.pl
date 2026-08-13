@@ -139,6 +139,13 @@ def fmt_brl(v):
     except:
         return "R$ 0,00"
 
+def fmt_brl0(v):
+    """Formata valor monetário em R$ SEM casas decimais (arredondado), usado nos gráficos."""
+    try:
+        return f"R$ {round(float(v)):,}".replace(",",".")
+    except:
+        return "R$ 0"
+
 def plotly_dark(fig, height=None, margin_b=40):
     u = dict(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(255,255,255,0.32)",
              font=dict(color="#c8d8e8",family="Space Grotesk"),coloraxis_showscale=False,
@@ -157,6 +164,15 @@ BLUE  = ["#0c4a6e","#0369a1","#0ea5e9","#7dd3fc","#bae6fd"]
 RED   = ["#7f1d1d","#b91c1c","#ef4444","#fca5a5"]
 GREEN = ["#14532d","#15803d","#22c55e","#86efac","#bbf7d0"]
 MIXED = ["#0ea5e9","#22c55e","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","#f97316"]
+
+# ── Mapeamento de Veículos → Equipe (EDITE AQUI conforme sua operação) ────────
+# Preencha com a PLACA real (como aparece na planilha) e o nome da equipe/AM
+# responsável por aquele veículo. As placas não cadastradas aqui aparecerão
+# como "—" na legenda lateral do gráfico "Por Placa".
+PLACA_EQUIPE = {
+    # "NPB1J08": "Equipe Norte",
+    # "ABC1D23": "Equipe Sul",
+}
 
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 SHEET_ID       = "1GCw6vE5lrIZYJUKnQlKvBMX71CgIdxcRBA1YCrjFadI"
@@ -268,6 +284,15 @@ if COL_DTENTREGA:
             df_raw.loc[mask_nat, COL_DTENTREGA], format="%Y-%m-%d", errors="coerce")
 else:
     df_raw["_DTENTREGA_DT"] = pd.NaT
+
+# ── Apelidos de veículos (Caminhão 01, 02, ...) — ordem estável por placa ────
+APELIDO_PLACA = {}
+if COL_PLACA:
+    _placas_unicas = sorted([p for p in df_raw[COL_PLACA].unique() if p.strip() != ""])
+    APELIDO_PLACA = {p: f"Caminhão {str(i+1).zfill(2)}" for i, p in enumerate(_placas_unicas)}
+
+def apelido_placa(p):
+    return APELIDO_PLACA.get(p, p)
 
 # ── Normaliza colunas reentregas ──────────────────────────────────────────────
 REENT_COLS_MAP = {
@@ -541,7 +566,7 @@ with tab_dash:
         fig.add_trace(go.Bar(
             x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
             marker=dict(color=bar_colors, opacity=0.88, line=dict(color="rgba(255,255,255,0.06)",width=0.5)),
-            text=[fmt_brl(v) for v in df_data[val_col]],
+            text=[fmt_brl0(v) for v in df_data[val_col]],
             textposition="outside",
             textfont=dict(size=18, color="#ffffff", family="DM Mono"),
             hovertemplate="<b>%{x}</b><br>Valor: <b>%{text}</b><extra></extra>", yaxis="y1",
@@ -600,18 +625,95 @@ with tab_dash:
         )
         return fig
 
-    # Gráfico principal: PLACA
+    # Gráfico principal: PLACA (com apelidos, legenda de equipe e acumulado mensal)
     st.markdown('<div class="sec-header"><div class="bar"></div><h3>🚚 Devoluções por PLACA — Valor e Quantidade</h3></div>', unsafe_allow_html=True)
     if COL_PLACA:
         df_placa = (df[df[COL_PLACA].str.strip()!=""]
                     .groupby(COL_PLACA).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
                     .reset_index().sort_values("Valor",ascending=False))
         if not df_placa.empty:
-            n = len(df_placa)
-            bc = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
-            periodo = f"Data DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel else "Todos os períodos"
-            st.plotly_chart(make_combo_chart(df_placa,COL_PLACA,"Valor","Qtd","",periodo,bc), use_container_width=True)
-            st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 5 — crítico</span><span>🟠 6–10 — atenção</span><span>🔵 Demais</span><span>🟡 Linha = quantidade</span></div>', unsafe_allow_html=True)
+            df_placa["Apelido"] = df_placa[COL_PLACA].apply(apelido_placa)
+
+            # ── Acumulado mensal (1º dia do mês corrente até hoje) ───────────
+            hoje = date.today()
+            primeiro_dia_mes = hoje.replace(day=1)
+            if "_DTENTREGA_DT" in df_raw.columns:
+                df_mes = df_raw[
+                    (df_raw["_DTENTREGA_DT"].dt.date >= primeiro_dia_mes) &
+                    (df_raw["_DTENTREGA_DT"].dt.date <= hoje)
+                ].copy()
+            else:
+                df_mes = pd.DataFrame()
+
+            col_graf, col_equipe, col_acum = st.columns([3, 1.1, 1.5], gap="medium")
+
+            with col_graf:
+                n = len(df_placa)
+                bc = ["#ef4444" if i<5 else "#f97316" if i<10 else "#0ea5e9" for i in range(n)]
+                periodo = f"Data DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel else "Todos os períodos"
+                st.plotly_chart(make_combo_chart(df_placa,"Apelido","Valor","Qtd","",periodo,bc), use_container_width=True)
+                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:18px;padding-left:4px;"><span>🔴 Top 5 — crítico</span><span>🟠 6–10 — atenção</span><span>🔵 Demais</span><span>🟡 Linha = quantidade</span></div>', unsafe_allow_html=True)
+
+            with col_equipe:
+                st.markdown('<div style="font-family:\'Bebas Neue\',sans-serif;font-size:0.82rem;color:#7dd3fc;letter-spacing:0.06em;margin-bottom:10px;">🧑‍🤝‍🧑 VEÍCULO × EQUIPE</div>', unsafe_allow_html=True)
+                rows_eq = ""
+                for i, r in enumerate(df_placa.itertuples()):
+                    equipe = PLACA_EQUIPE.get(getattr(r, COL_PLACA), "—")
+                    bg = "rgba(14,165,233,0.06)" if i % 2 == 0 else "rgba(0,0,0,0)"
+                    rows_eq += (
+                        f'<tr style="background:{bg};">'
+                        f'<td style="padding:8px 10px;border-bottom:1px solid rgba(56,189,248,0.08);">'
+                        f'<div style="color:#7dd3fc;font-size:0.76rem;font-weight:700;">{r.Apelido}</div>'
+                        f'<div style="color:#64748b;font-size:0.65rem;">🚚 {getattr(r, COL_PLACA)}</div>'
+                        f'<div style="color:#94a3b8;font-size:0.68rem;">👥 {equipe}</div>'
+                        f'</td></tr>'
+                    )
+                st.markdown(
+                    f'<div style="background:rgba(6,13,31,0.92);border:1px solid rgba(56,189,248,0.15);'
+                    f'border-radius:12px;overflow:hidden;max-height:520px;overflow-y:auto;">'
+                    f'<table style="width:100%;border-collapse:collapse;">{rows_eq}</table></div>',
+                    unsafe_allow_html=True
+                )
+                st.caption("Edite o dicionário PLACA_EQUIPE no início do código para vincular cada placa à sua equipe.")
+
+            with col_acum:
+                st.markdown(f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:0.82rem;color:#7dd3fc;letter-spacing:0.06em;margin-bottom:10px;">📈 ACUMULADO — {hoje.strftime("%m/%Y")}</div>', unsafe_allow_html=True)
+                if not df_mes.empty:
+                    df_mes_dia = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
+                                  .groupby("_DIA").agg(Valor=(VALOR_COL,"sum")).reset_index()
+                                  .sort_values("_DIA"))
+                    df_mes_dia["Acumulado"] = df_mes_dia["Valor"].cumsum()
+                    total_mes = df_mes_dia["Acumulado"].iloc[-1] if len(df_mes_dia) > 0 else 0
+                    valor_hoje = df_mes_dia.loc[df_mes_dia["_DIA"]==hoje, "Valor"].sum()
+
+                    fig_acum = go.Figure()
+                    fig_acum.add_trace(go.Scatter(
+                        x=df_mes_dia["_DIA"], y=df_mes_dia["Acumulado"],
+                        mode="lines+markers", fill="tozeroy",
+                        line=dict(color="#38bdf8", width=2.5),
+                        marker=dict(color="#7dd3fc", size=5),
+                        fillcolor="rgba(56,189,248,0.14)",
+                        hovertemplate="<b>%{x}</b><br>Acumulado: R$ %{y:,.0f}<extra></extra>",
+                    ))
+                    fig_acum.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(255,255,255,0.28)",
+                        font=dict(color="#c8d8e8", family="Space Grotesk", size=10),
+                        height=430, margin=dict(t=10,b=30,l=8,r=8),
+                        xaxis=dict(tickfont=dict(size=9,color="#94a3b8"), showgrid=False,
+                                   linecolor="rgba(255,255,255,0.1)"),
+                        yaxis=dict(tickfont=dict(size=9,color="#94a3b8"),
+                                   gridcolor="rgba(255,255,255,0.08)", tickformat=",.0f"),
+                        showlegend=False,
+                    )
+                    st.plotly_chart(fig_acum, use_container_width=True)
+                    st.markdown(
+                        f'<p style="font-size:0.72rem;color:#64748b;text-align:center;margin-top:-10px;">'
+                        f'Hoje: <b style="color:#f59e0b;">{fmt_brl0(valor_hoje)}</b> · '
+                        f'Total mês: <b style="color:#4ade80;">{fmt_brl0(total_mes)}</b></p>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.info("Sem dados no mês corrente.")
         else:
             st.info("Sem dados de PLACA para o filtro selecionado")
     else:
@@ -620,7 +722,7 @@ with tab_dash:
     st.markdown("---")
 
     # Gráfico MOTIVO
-    st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ Valor por MOTIVO de Devolução</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-header"><div class="bar"></div><h3>❗ OCORRÊNCIAS DE RETORNO</h3></div>', unsafe_allow_html=True)
     if COL_MOTIVO:
         df_mot_v = (df[df[COL_MOTIVO].str.strip()!=""]
                     .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL,"sum"),Qtd=(VALOR_COL,"count"))
@@ -645,7 +747,7 @@ with tab_dash:
     def make_hbar(df_data, x_col, y_col, color_scale, height=420):
         fig = px.bar(df_data,x=x_col,y=y_col,orientation="h",
                      color=x_col,color_continuous_scale=color_scale,
-                     text=[fmt_brl(v) for v in df_data[x_col]],
+                     text=[fmt_brl0(v) for v in df_data[x_col]],
                      labels={y_col:"",x_col:"R$"})
         fig.update_traces(
             textposition="outside",
@@ -680,7 +782,7 @@ with tab_dash:
                 st.plotly_chart(make_hbar(df_m2,"Valor",COL_MOTIVO,RED,420),use_container_width=True)
                 top=df_m2.iloc[-1]
                 pct=top["Valor"]/total_val*100 if total_val>0 else 0
-                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{top[COL_MOTIVO]}</b> — {pct:.1f}% ({fmt_brl(top["Valor"])})</p>',unsafe_allow_html=True)
+                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{top[COL_MOTIVO]}</b> — {pct:.1f}% ({fmt_brl0(top["Valor"])})</p>',unsafe_allow_html=True)
     with c2:
         st.markdown('<div class="sec-header"><div class="bar"></div><h3>👤 TOP 10 CLIENTES</h3></div>', unsafe_allow_html=True)
         if COL_CLIENTE:
@@ -690,7 +792,7 @@ with tab_dash:
             if not df_cl.empty:
                 st.plotly_chart(make_hbar(df_cl,"Valor",COL_CLIENTE,MIXED,420),use_container_width=True)
                 top_c=df_cl.iloc[-1]
-                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{str(top_c[COL_CLIENTE])[:30]}</b> — {fmt_brl(top_c["Valor"])}</p>',unsafe_allow_html=True)
+                st.markdown(f'<p style="font-size:0.75rem;color:#64748b;padding:0 4px 12px;">📌 <b style="color:#94a3b8">{str(top_c[COL_CLIENTE])[:30]}</b> — {fmt_brl0(top_c["Valor"])}</p>',unsafe_allow_html=True)
     with c3:
         st.markdown('<div class="sec-header"><div class="bar"></div><h3>🧑‍💼 TOP 10 NOMERCA (Vendedor)</h3></div>', unsafe_allow_html=True)
         if COL_VENDEDOR:
