@@ -810,8 +810,8 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         font=dict(color="#b9c8dc", family="Inter"),
         height=h, margin=dict(t=64, b=86, l=10, r=30),
         hoverlabel=HOVER,
-        title=dict(text=f"<span style='font-size:12px;color:#7c8ea8'>{periodo}</span>",
-                   x=0.5, xanchor="center", y=0.985),
+        title=(dict(text=f"<span style='font-size:12px;color:#7c8ea8'>{periodo}</span>",
+                    x=0.5, xanchor="center", y=0.985) if periodo else None),
         bargap=0.34,
         xaxis=dict(tickfont=dict(color="#a9bcd4", size=12, family="JetBrains Mono"),
                    gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
@@ -915,9 +915,7 @@ if pagina == "Dashboard":
         + kpi("🚚", "Veículos únicos", f"{total_placas}", "Placas envolvidas", "#fb923c")
         + '</div>', unsafe_allow_html=True)
 
-    # ── ÁREA 1 — gráfico principal + acumulado ──────────────────────────────
-    col_graf, col_acum = st.columns([3, 1.35], gap="medium")
-
+    # ── ÁREA 1 — gráficos por placa (empilhados, largura total) ─────────────
     hoje = date.today()
     primeiro_dia_mes = hoje.replace(day=1)
     df_mes = pd.DataFrame()
@@ -927,78 +925,40 @@ if pagina == "Dashboard":
             (df_raw["_DTENTREGA_DT"].dt.date <= hoje)
         ].copy()
 
-    with col_graf:
-        periodo = (f"DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel
-                   else "Todos os períodos")
-        panel_open("Devoluções por placa — valor e quantidade de notas", tag=periodo, icon="🚚")
-        df_placa = pd.DataFrame()
-        if COL_PLACA:
-            _aggs = dict(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
-            if COL_CLIENTE:
-                # Clientes únicos por placa, a partir da mesma base já filtrada.
-                _aggs["Clientes"] = (COL_CLIENTE, "nunique")
-            df_placa = (df[df[COL_PLACA].str.strip() != ""]
-                        .groupby(COL_PLACA).agg(**_aggs)
-                        .reset_index().sort_values("Valor", ascending=False))
-            if not df_placa.empty:
-                st.plotly_chart(
-                    make_combo_chart(df_placa, COL_PLACA, "Valor", "Qtd", "", periodo, ramp(len(df_placa))),
-                    use_container_width=True)
-                st.markdown(
-                    '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.7rem;color:#4e5f78;'
-                    'margin-top:-14px;padding-left:4px;">'
-                    '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
-                    '<span style="color:#fcd34d;">● Linha: notas devolvidas</span></div>',
-                    unsafe_allow_html=True)
-            else:
-                st.info("Nenhuma placa no filtro atual. Ajuste a data ou limpe os filtros.")
-        else:
-            st.warning("Coluna PLACA não encontrada na planilha.")
-        panel_close()
+    periodo = (f"DTENT: {dt_sel.strftime('%d/%m/%Y')}" if usar_data and dt_sel
+               else "Todos os períodos")
 
-    with col_acum:
-        panel_open("Acumulado", tag=hoje.strftime("%m/%Y"), icon="📈")
-        if not df_mes.empty:
-            df_mes_dia = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
-                          .groupby("_DIA").agg(Valor=(VALOR_COL, "sum")).reset_index()
-                          .sort_values("_DIA"))
-            df_mes_dia["Acumulado"] = df_mes_dia["Valor"].cumsum()
-            total_mes = df_mes_dia["Acumulado"].iloc[-1] if len(df_mes_dia) > 0 else 0
-            valor_hoje = df_mes_dia.loc[df_mes_dia["_DIA"] == hoje, "Valor"].sum()
-
-            fig_acum = go.Figure()
-            fig_acum.add_trace(go.Scatter(
-                x=df_mes_dia["_DIA"], y=df_mes_dia["Acumulado"],
-                mode="lines", fill="tozeroy",
-                line=dict(color="#22d3ee", width=2, shape="spline"),
-                fillcolor="rgba(34,211,238,0.10)",
-                hovertemplate="<b>%{x}</b><br>Acumulado: R$ %{y:,.0f}<extra></extra>",
-            ))
-            fig_acum.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(color="#b9c8dc", family="Inter", size=10),
-                height=468, margin=dict(t=8, b=26, l=6, r=6), hoverlabel=HOVER,
-                xaxis=dict(tickfont=dict(size=10, color="#7c8ea8"), showgrid=False,
-                           linecolor="rgba(120,170,225,0.10)"),
-                yaxis=dict(tickfont=dict(size=10, color="#7c8ea8"),
-                           gridcolor=GRID, tickformat=",.0f", zeroline=False),
-                showlegend=False,
-            )
-            st.plotly_chart(fig_acum, use_container_width=True)
+    panel_open("Devoluções por placa — valor e quantidade de notas", tag=periodo, icon="🚚")
+    df_placa = pd.DataFrame()
+    if COL_PLACA:
+        _aggs = dict(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+        if COL_CLIENTE:
+            # Clientes únicos por placa, a partir da mesma base já filtrada.
+            _aggs["Clientes"] = (COL_CLIENTE, "nunique")
+        df_placa = (df[df[COL_PLACA].str.strip() != ""]
+                    .groupby(COL_PLACA).agg(**_aggs)
+                    .reset_index().sort_values("Valor", ascending=False))
+        if not df_placa.empty:
+            st.plotly_chart(
+                make_combo_chart(df_placa, COL_PLACA, "Valor", "Qtd", "", "", ramp(len(df_placa))),
+                use_container_width=True)
             st.markdown(
-                f'<p style="font-size:0.72rem;color:#7c8ea8;text-align:center;margin-top:-12px;">'
-                f'Hoje <b class="num" style="color:#fbbf24;">{fmt_brl0(valor_hoje)}</b> &nbsp;·&nbsp; '
-                f'Mês <b class="num" style="color:#34d399;">{fmt_brl0(total_mes)}</b></p>',
+                '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.7rem;color:#4e5f78;'
+                'margin-top:-14px;padding-left:4px;">'
+                '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
+                '<span style="color:#fcd34d;">● Linha: notas devolvidas</span></div>',
                 unsafe_allow_html=True)
         else:
-            st.info("Nenhum lançamento no mês corrente ainda.")
-        panel_close()
+            st.info("Nenhuma placa no filtro atual. Ajuste a data ou limpe os filtros.")
+    else:
+        st.warning("Coluna PLACA não encontrada na planilha.")
+    panel_close()
 
     # ── Gráfico irmão: clientes únicos por placa ────────────────────────────
     if COL_PLACA and COL_CLIENTE and not df_placa.empty and "Clientes" in df_placa.columns:
         panel_open("Devoluções por placa — valor e clientes únicos", tag=periodo, icon="👥")
         st.plotly_chart(
-            make_combo_chart(df_placa, COL_PLACA, "Valor", "Clientes", "", periodo, ramp(len(df_placa)),
+            make_combo_chart(df_placa, COL_PLACA, "Valor", "Clientes", "", "", ramp(len(df_placa)),
                              linha_nome="Clientes por veículo", linha_cor="#34d399",
                              linha_ponto="#d1fae5", linha_texto="#a7f3d0", linha_rotulo="Clientes"),
             use_container_width=True)
@@ -1010,8 +970,82 @@ if pagina == "Dashboard":
             unsafe_allow_html=True)
         panel_close()
 
-    # ── ÁREA 2 — três painéis ───────────────────────────────────────────────
-    a1, a2, a3 = st.columns(3, gap="medium")
+    # ── Acumulado do mês ────────────────────────────────────────────────────
+    panel_open("Acumulado do mês", tag=hoje.strftime("%m/%Y"), icon="📈")
+    if not df_mes.empty:
+        df_mes_dia = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
+                      .groupby("_DIA").agg(Valor=(VALOR_COL, "sum")).reset_index()
+                      .sort_values("_DIA"))
+        df_mes_dia["Acumulado"] = df_mes_dia["Valor"].cumsum()
+        total_mes = df_mes_dia["Acumulado"].iloc[-1] if len(df_mes_dia) > 0 else 0
+        valor_hoje = df_mes_dia.loc[df_mes_dia["_DIA"] == hoje, "Valor"].sum()
+
+        fig_acum = go.Figure()
+        fig_acum.add_trace(go.Scatter(
+            x=df_mes_dia["_DIA"], y=df_mes_dia["Acumulado"],
+            mode="lines", fill="tozeroy",
+            line=dict(color="#22d3ee", width=2.2, shape="spline"),
+            fillcolor="rgba(34,211,238,0.10)",
+            hovertemplate="<b>%{x}</b><br>Acumulado: R$ %{y:,.0f}<extra></extra>",
+        ))
+        fig_acum.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#b9c8dc", family="Inter", size=11),
+            height=340, margin=dict(t=10, b=30, l=8, r=8), hoverlabel=HOVER,
+            separators=",.",
+            xaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), showgrid=False,
+                       linecolor="rgba(120,170,225,0.10)"),
+            yaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), tickprefix="R$ ",
+                       gridcolor=GRID, tickformat=",.0f", zeroline=False),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_acum, use_container_width=True)
+        st.markdown(
+            f'<p style="font-size:0.74rem;color:#7c8ea8;text-align:center;margin-top:-12px;">'
+            f'Hoje <b class="num" style="color:#fbbf24;">{fmt_brl0(valor_hoje)}</b> &nbsp;·&nbsp; '
+            f'Mês <b class="num" style="color:#34d399;">{fmt_brl0(total_mes)}</b></p>',
+            unsafe_allow_html=True)
+    else:
+        st.info("Nenhum lançamento no mês corrente ainda.")
+    panel_close()
+
+    # ── Evolução diária ─────────────────────────────────────────────────────
+    panel_open("Evolução diária", tag="Mês corrente", icon="📊")
+    if not df_mes.empty:
+        df_ev = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
+                 .groupby("_DIA").agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
+                 .reset_index().sort_values("_DIA"))
+        fig_ev = go.Figure()
+        fig_ev.add_trace(go.Bar(
+            x=df_ev["_DIA"], y=df_ev["Valor"], name="Valor (R$)",
+            marker=dict(color="rgba(34,211,238,0.5)", line=dict(width=0)),
+            hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.0f}<extra></extra>"))
+        fig_ev.add_trace(go.Scatter(
+            x=df_ev["_DIA"], y=df_ev["Qtd"], name="Notas", yaxis="y2",
+            mode="lines+markers", line=dict(color="#a78bfa", width=2, shape="spline"),
+            marker=dict(color="#c4b5fd", size=6),
+            hovertemplate="<b>%{x}</b><br>Notas: %{y}<extra></extra>"))
+        fig_ev.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#b9c8dc", family="Inter", size=11),
+            height=340, margin=dict(t=10, b=30, l=8, r=8), hoverlabel=HOVER,
+            bargap=0.42, separators=",.",
+            xaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), showgrid=False,
+                       linecolor="rgba(120,170,225,0.10)"),
+            yaxis=dict(tickfont=dict(size=11, color="#7c8ea8"), tickprefix="R$ ",
+                       gridcolor=GRID, tickformat=",.0f", zeroline=False),
+            yaxis2=dict(overlaying="y", side="right", showgrid=False,
+                        tickfont=dict(size=11, color="#a78bfa"), zeroline=False),
+            legend=dict(orientation="h", x=1, xanchor="right", y=1.14,
+                        bgcolor="rgba(0,0,0,0)", font=dict(size=11, color="#7c8ea8")),
+        )
+        st.plotly_chart(fig_ev, use_container_width=True)
+    else:
+        st.info("Nenhum lançamento no mês corrente ainda.")
+    panel_close()
+
+    # ── ÁREA 2 — painéis de motivo e veículo ────────────────────────────────
+    a1, a2 = st.columns(2, gap="medium")
 
     with a1:
         panel_open("Devoluções por motivo", tag="Valor", icon="❗")
@@ -1020,7 +1054,7 @@ if pagina == "Dashboard":
                         .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL, "sum"))
                         .reset_index().sort_values("Valor", ascending=True).tail(8))
             if not df_m_top.empty:
-                st.plotly_chart(make_hbar(df_m_top, "Valor", COL_MOTIVO, RED, 380), use_container_width=True)
+                st.plotly_chart(make_hbar(df_m_top, "Valor", COL_MOTIVO, RED, 400), use_container_width=True)
             else:
                 st.info("Sem motivos no filtro atual.")
         panel_close()
@@ -1032,45 +1066,12 @@ if pagina == "Dashboard":
                         .groupby(COL_PLACA).agg(Qtd=(VALOR_COL, "count"))
                         .reset_index().sort_values("Qtd", ascending=True).tail(8))
             if not df_v_top.empty:
-                st.plotly_chart(make_hbar(df_v_top, "Qtd", COL_PLACA, BLUE, 380, money=False),
+                st.plotly_chart(make_hbar(df_v_top, "Qtd", COL_PLACA, BLUE, 400, money=False),
                                 use_container_width=True)
             else:
                 st.info("Sem veículos no filtro atual.")
         panel_close()
 
-    with a3:
-        panel_open("Evolução diária", tag="Mês corrente", icon="📊")
-        if not df_mes.empty:
-            df_ev = (df_mes.assign(_DIA=df_mes["_DTENTREGA_DT"].dt.date)
-                     .groupby("_DIA").agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
-                     .reset_index().sort_values("_DIA"))
-            fig_ev = go.Figure()
-            fig_ev.add_trace(go.Bar(
-                x=df_ev["_DIA"], y=df_ev["Valor"], name="Valor",
-                marker=dict(color="rgba(34,211,238,0.55)", line=dict(width=0)),
-                hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.0f}<extra></extra>"))
-            fig_ev.add_trace(go.Scatter(
-                x=df_ev["_DIA"], y=df_ev["Qtd"], name="Qtd", yaxis="y2",
-                mode="lines", line=dict(color="#a78bfa", width=2, shape="spline"),
-                hovertemplate="<b>%{x}</b><br>Notas: %{y}<extra></extra>"))
-            fig_ev.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(color="#b9c8dc", family="Inter", size=10),
-                height=380, margin=dict(t=8, b=26, l=6, r=6), hoverlabel=HOVER,
-                bargap=0.4,
-                xaxis=dict(tickfont=dict(size=10, color="#7c8ea8"), showgrid=False,
-                           linecolor="rgba(120,170,225,0.10)"),
-                yaxis=dict(tickfont=dict(size=10, color="#7c8ea8"), gridcolor=GRID,
-                           tickformat=",.0f", zeroline=False),
-                yaxis2=dict(overlaying="y", side="right", showgrid=False,
-                            tickfont=dict(size=10, color="#a78bfa"), zeroline=False),
-                legend=dict(orientation="h", x=1, xanchor="right", y=1.16,
-                            bgcolor="rgba(0,0,0,0)", font=dict(size=11, color="#7c8ea8")),
-            )
-            st.plotly_chart(fig_ev, use_container_width=True)
-        else:
-            st.info("Nenhum lançamento no mês corrente ainda.")
-        panel_close()
 
     # ── Comparação semanal por placa (lógica original preservada) ───────────
     if COL_PLACA:
