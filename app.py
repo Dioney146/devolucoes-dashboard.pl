@@ -729,9 +729,9 @@ with tab_dash:
                     name=f"Qtd. {dia_sem_passada.strftime('%d/%m')} (semana passada)",
                     mode="lines+markers+text",
                     text=[f"<b>{int(v)}</b>" for v in df_comp["Qtd_Semana"]],
-                    textposition="top center", textfont=dict(color="#fcd34d", size=12, family="DM Mono"),
-                    line=dict(color="#eab308", width=2, dash="dot"),
-                    marker=dict(color="#fcd34d", size=7, line=dict(color="#eab308", width=1.5), symbol="circle"),
+                    textposition="top center", textfont=dict(color="#fca5a5", size=12, family="DM Mono"),
+                    line=dict(color="#ef4444", width=2, dash="dot"),
+                    marker=dict(color="#fca5a5", size=7, line=dict(color="#ef4444", width=1.5), symbol="circle"),
                     hovertemplate="<b>%{x}</b><br>Qtd semana passada: <b>%{y}</b><extra></extra>",
                     yaxis="y2",
                 ))
@@ -766,7 +766,7 @@ with tab_dash:
                                 orientation="h", x=0.5, xanchor="center", y=1.14),
                 )
                 st.plotly_chart(fig_comp, use_container_width=True)
-                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:10px;padding-left:4px;"><span>🟦 Valor referência</span><span>⬛ Valor semana passada</span><span>🟡 Linha sólida = Qtd. notas (referência)</span><span>🟡 Linha pontilhada = Qtd. notas (semana passada)</span></div>', unsafe_allow_html=True)
+                st.markdown('<div style="display:flex;gap:22px;font-size:0.74rem;color:#64748b;margin-top:-8px;margin-bottom:10px;padding-left:4px;"><span>🟦 Valor referência</span><span>⬛ Valor semana passada</span><span>🟡 Linha sólida = Qtd. notas (referência)</span><span>🔴 Linha pontilhada = Qtd. notas (semana passada)</span></div>', unsafe_allow_html=True)
 
                 total_atual = df_comp["Valor_Atual"].sum()
                 total_semana = df_comp["Valor_Semana"].sum()
