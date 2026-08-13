@@ -225,6 +225,56 @@ div[data-baseweb="popover"] ul{background:var(--panel-solid)!important;
   border:1px solid rgba(52,211,153,0.28)!important;border-radius:var(--r-sm)!important;
   font-weight:600!important;}
 
+/* ── Card do gráfico comparativo ─────────────────────────────────────────── */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.cc-head){
+  background:linear-gradient(155deg,rgba(13,22,40,0.72),rgba(8,14,27,0.66))!important;
+  border:1px solid rgba(56,189,248,0.16)!important;border-radius:22px!important;
+  padding:22px 26px 18px!important;margin-bottom:18px;
+  backdrop-filter:blur(18px);
+  box-shadow:0 18px 60px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.035);}
+.cc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:26px;
+  flex-wrap:wrap;padding-bottom:16px;margin-bottom:6px;
+  border-bottom:1px solid rgba(120,170,225,0.09);}
+.cc-head-l{min-width:240px;}
+.cc-title{font-family:'Sora',sans-serif;font-size:1.02rem;font-weight:600;color:#f1f6fc;
+  letter-spacing:.01em;margin:0;line-height:1.25;}
+.cc-sub{font-size:0.76rem;color:#7c8ea8;margin:7px 0 0;font-weight:400;}
+.cc-head-r{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;}
+.cc-mini{display:flex;flex-direction:column;justify-content:center;gap:3px;
+  min-width:132px;padding:11px 16px;border-radius:14px;
+  background:rgba(255,255,255,0.032);border:1px solid rgba(120,170,225,0.13);}
+.cc-mini-lab{font-size:0.6rem;color:#6d8099;font-weight:700;letter-spacing:.15em;
+  text-transform:uppercase;}
+.cc-mini-val{font-family:'JetBrains Mono',monospace;font-size:1.16rem;font-weight:700;
+  letter-spacing:-0.02em;line-height:1.1;}
+.cc-mini-sub{font-size:0.63rem;color:#4e5f78;}
+.cc-ctrls{display:flex;align-items:center;gap:8px;}
+.cc-pick{font-size:0.73rem;color:#b9c8dc;padding:9px 14px;border-radius:11px;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(120,170,225,0.13);white-space:nowrap;}
+.cc-dots{font-size:1.05rem;color:#6d8099;padding:6px 11px;border-radius:11px;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(120,170,225,0.13);line-height:1.1;}
+.cc-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;
+  padding:15px 20px;border-radius:16px;
+  background:linear-gradient(120deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015));
+  border:1px solid rgba(120,170,225,0.11);}
+.cc-foot-i{display:flex;flex-direction:column;gap:5px;flex:1 1 170px;min-width:150px;}
+.cc-foot-lab{display:flex;align-items:center;gap:7px;font-size:0.66rem;color:#6d8099;
+  font-weight:700;letter-spacing:.13em;text-transform:uppercase;}
+.cc-foot-lab .d{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.cc-foot-val{font-family:'JetBrains Mono',monospace;font-size:1.24rem;font-weight:700;
+  letter-spacing:-0.02em;}
+.cc-foot-sep{width:1px;align-self:stretch;
+  background:linear-gradient(180deg,transparent,rgba(120,170,225,0.18),transparent);}
+@media (max-width:900px){
+  .cc-head{gap:16px;}
+  .cc-head-r{width:100%;}
+  .cc-mini{flex:1 1 140px;min-width:0;}
+  .cc-ctrls{display:none;}
+  .cc-foot-sep{display:none;}
+  .cc-foot-val{font-size:1.06rem;}
+  div[data-testid="stVerticalBlockBorderWrapper"]:has(.cc-head){padding:18px 16px 14px!important;}
+}
+
 /* ── Tabelas ─────────────────────────────────────────────────────────────── */
 .tbl-wrap{background:rgba(6,11,22,0.86);border:1px solid var(--line);
   border-radius:var(--r-md);overflow:auto;max-height:540px;}
@@ -996,9 +1046,6 @@ if pagina == "Dashboard":
                           "Sexta-feira", "Sábado", "Domingo"]
         nome_dia = dias_semana_pt[dia_ref.weekday()]
 
-        panel_open(f"Comparação por placa — {nome_dia}",
-                   tag=f"{dia_ref.strftime('%d/%m')} × {dia_sem_passada.strftime('%d/%m')}", icon="📆")
-
         if "_DTENTREGA_DT" in df_raw.columns:
             df_atual_dia = df_raw[
                 (df_raw["_DTENTREGA_DT"].dt.date == dia_ref) & (df_raw[COL_PLACA].str.strip() != "")
@@ -1022,69 +1069,163 @@ if pagina == "Dashboard":
                 df_comp[["Valor_Atual", "Qtd_Atual", "Valor_Semana", "Qtd_Semana"]].fillna(0)
             df_comp = df_comp.sort_values("Valor_Atual", ascending=False)
 
-            fig_comp = go.Figure()
-            fig_comp.add_trace(go.Bar(
-                x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
-                name=f"{dia_sem_passada.strftime('%d/%m')} · semana passada",
-                marker=dict(color="rgba(59,130,246,0.55)", line=dict(width=0)),
-                text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]], textposition="outside",
-                textfont=dict(size=11, color="#9fc4f7", family="JetBrains Mono"),
-                hovertemplate="<b>%{x}</b><br>Semana passada: %{text}<extra></extra>"))
-            fig_comp.add_trace(go.Bar(
-                x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
-                name=f"{dia_ref.strftime('%d/%m')} · referência",
-                marker=dict(color="rgba(52,211,153,0.85)", line=dict(width=0)),
-                text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]], textposition="outside",
-                textfont=dict(size=11, color="#e8f1fb", family="JetBrains Mono"),
-                hovertemplate="<b>%{x}</b><br>Referência: %{text}<extra></extra>"))
-            fig_comp.add_trace(go.Scatter(
-                x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
-                name="Notas · semana passada", mode="lines+markers",
-                line=dict(color="#f87171", width=1.6, dash="dot"),
-                marker=dict(color="#fca5a5", size=6),
-                hovertemplate="<b>%{x}</b><br>Notas semana passada: %{y}<extra></extra>", yaxis="y2"))
-            fig_comp.add_trace(go.Scatter(
-                x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
-                name="Notas · referência", mode="lines+markers+text",
-                text=[f"<b>{int(v)}</b>" for v in df_comp["Qtd_Atual"]],
-                textposition="top center", textfont=dict(color="#fcd34d", size=11, family="JetBrains Mono"),
-                line=dict(color="#fbbf24", width=2),
-                marker=dict(color="#fde68a", size=7),
-                hovertemplate="<b>%{x}</b><br>Notas referência: %{y}<extra></extra>", yaxis="y2"))
-
-            n_comp = len(df_comp)
-            max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
-            max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
-            fig_comp.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(color="#b9c8dc", family="Inter"),
-                height=max(440, min(n_comp * 48, 680)),
-                margin=dict(t=54, b=90, l=10, r=24), hoverlabel=HOVER,
-                barmode="group", bargap=0.32, bargroupgap=0.12,
-                xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
-                           gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
-                           zeroline=False, tickangle=-38, automargin=True),
-                yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
-                           range=[0, max_val_comp * 1.5]),
-                yaxis2=dict(showticklabels=False, overlaying="y", side="right",
-                            showgrid=False, zeroline=False, range=[0, max_qtd_comp * 3.4]),
-                legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color="#8fa3bd", size=11),
-                            orientation="h", x=0.5, xanchor="center", y=1.13),
-            )
-            st.plotly_chart(fig_comp, use_container_width=True)
-
+            # Totais e variação — mesmas fórmulas de antes, apenas calculadas
+            # antes da renderização para alimentar o cabeçalho e o rodapé do card.
             total_atual = df_comp["Valor_Atual"].sum()
             total_semana = df_comp["Valor_Semana"].sum()
             var_pct = ((total_atual - total_semana) / total_semana * 100) if total_semana > 0 else 0
-            st.markdown(
-                f'<p style="font-size:0.76rem;color:#7c8ea8;padding:0 4px 8px;">'
-                f'{dia_ref.strftime("%d/%m")}: <b class="num" style="color:#34d399;">{fmt_brl0(total_atual)}</b> · '
-                f'{dia_sem_passada.strftime("%d/%m")}: <b class="num" style="color:#8fa3bd;">{fmt_brl0(total_semana)}</b> · '
-                f'variação <b class="num" style="color:{"#f87171" if var_pct > 0 else "#34d399"};">{var_pct:+.1f}%</b></p>',
-                unsafe_allow_html=True)
+
+            _lbl_ref = dia_ref.strftime("%d/%m")
+            _lbl_ant = dia_sem_passada.strftime("%d/%m")
+
+            with st.container(border=True):
+                # ── Cabeçalho do card ───────────────────────────────────────
+                st.markdown(f"""
+                <div class="cc-head">
+                  <div class="cc-head-l">
+                    <p class="cc-title">Devoluções por placa — valor e quantidade</p>
+                    <p class="cc-sub">Comparativo: {_lbl_ref} (referência) vs {_lbl_ant} (semana passada) · {nome_dia}</p>
+                  </div>
+                  <div class="cc-head-r">
+                    <div class="cc-mini">
+                      <span class="cc-mini-lab">Total {_lbl_ref}</span>
+                      <span class="cc-mini-val" style="color:#34d399;">{fmt_brl0(total_atual)}</span>
+                      <span class="cc-mini-sub">valor devolvido</span>
+                    </div>
+                    <div class="cc-mini">
+                      <span class="cc-mini-lab">Total {_lbl_ant}</span>
+                      <span class="cc-mini-val" style="color:#60a5fa;">{fmt_brl0(total_semana)}</span>
+                      <span class="cc-mini-sub">valor devolvido</span>
+                    </div>
+                    <div class="cc-ctrls">
+                      <span class="cc-pick">Por placa ▾</span>
+                      <span class="cc-dots">⋮</span>
+                    </div>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # ── Tooltip único por placa (mesmos números do gráfico) ─────
+                cdata = [[fmt_brl0(va), fmt_brl0(vs), int(qa), int(qs)]
+                         for va, vs, qa, qs in zip(df_comp["Valor_Atual"], df_comp["Valor_Semana"],
+                                                   df_comp["Qtd_Atual"], df_comp["Qtd_Semana"])]
+                htmpl = (f"<b>Placa %{{x}}</b><br>"
+                         f"<span style='color:#34d399'>●</span> {_lbl_ref} — %{{customdata[0]}}<br>"
+                         f"<span style='color:#60a5fa'>●</span> {_lbl_ant} — %{{customdata[1]}}<br>"
+                         f"<span style='color:#fbbf24'>●</span> Notas {_lbl_ref} — %{{customdata[2]}}<br>"
+                         f"<span style='color:#f87171'>●</span> Notas {_lbl_ant} — %{{customdata[3]}}"
+                         f"<extra></extra>")
+
+                n_comp = len(df_comp)
+                max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
+                max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
+
+                # Rótulos da quantidade: afasta o texto quando ele encostaria
+                # no topo da barra, evitando sobreposição.
+                lab_ref, lab_ant = [], []
+                for va, vs, qa, qs in zip(df_comp["Valor_Atual"], df_comp["Valor_Semana"],
+                                          df_comp["Qtd_Atual"], df_comp["Qtd_Semana"]):
+                    bar_ref = float(va) / (max_val_comp * 1.55)
+                    bar_ant = float(vs) / (max_val_comp * 1.55)
+                    ln_ref = float(qa) / (max_qtd_comp * 3.6)
+                    ln_ant = float(qs) / (max_qtd_comp * 3.6)
+                    lab_ref.append(f"<b>{int(qa)}</b><br> " if abs(bar_ref - ln_ref) < 0.08 else f"<b>{int(qa)}</b>")
+                    lab_ant.append(f"<b>{int(qs)}</b><br> " if abs(bar_ant - ln_ant) < 0.08 else f"<b>{int(qs)}</b>")
+
+                fig_comp = go.Figure()
+                fig_comp.add_trace(go.Bar(
+                    x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
+                    name=f"{_lbl_ant} — semana passada",
+                    marker=dict(color="rgba(96,165,250,0.42)",
+                                line=dict(color="rgba(96,165,250,0.55)", width=1)),
+                    text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]], textposition="outside",
+                    textfont=dict(size=11, color="#9dc2f7", family="JetBrains Mono"),
+                    customdata=cdata, hovertemplate=htmpl))
+                fig_comp.add_trace(go.Bar(
+                    x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
+                    name=f"{_lbl_ref} — referência",
+                    marker=dict(color="rgba(52,211,153,0.72)",
+                                line=dict(color="rgba(52,211,153,0.85)", width=1)),
+                    text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]], textposition="outside",
+                    textfont=dict(size=12, color="#eaf6ff", family="JetBrains Mono"),
+                    customdata=cdata, hovertemplate=htmpl))
+                fig_comp.add_trace(go.Scatter(
+                    x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
+                    name=f"Notas — {_lbl_ant}", mode="lines+markers+text",
+                    text=lab_ant, textposition="bottom center",
+                    textfont=dict(color="#fca5a5", size=10, family="JetBrains Mono"),
+                    line=dict(color="#f87171", width=1.5, dash="dot", shape="spline"),
+                    marker=dict(color="#fca5a5", size=6, line=dict(color="rgba(4,7,15,0.9)", width=1)),
+                    customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
+                fig_comp.add_trace(go.Scatter(
+                    x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
+                    name=f"Notas — {_lbl_ref}", mode="lines+markers+text",
+                    text=lab_ref, textposition="top center",
+                    textfont=dict(color="#fcd34d", size=11, family="JetBrains Mono"),
+                    line=dict(color="#fbbf24", width=2, shape="spline"),
+                    marker=dict(color="#fde68a", size=7, line=dict(color="rgba(4,7,15,0.9)", width=1)),
+                    customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
+
+                fig_comp.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(color="#b9c8dc", family="Inter"),
+                    height=max(460, min(n_comp * 52, 700)),
+                    margin=dict(t=58, b=86, l=16, r=16),
+                    separators=",.",
+                    hovermode="closest",
+                    hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
+                                    font=dict(color="#e8f4ff", family="Inter", size=12.5),
+                                    align="left"),
+                    barmode="group", bargap=0.40, bargroupgap=0.10,
+                    xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
+                               showgrid=False, linecolor="rgba(120,170,225,0.12)",
+                               zeroline=False, tickangle=-38, automargin=True),
+                    yaxis=dict(title=dict(text="Valor (R$)",
+                                          font=dict(color="#6d8099", size=11, family="Inter")),
+                               showticklabels=True, tickprefix="R$ ", tickformat=",.0f",
+                               tickfont=dict(color="#6d8099", size=10, family="JetBrains Mono"),
+                               gridcolor="rgba(120,170,225,0.055)", zeroline=False,
+                               range=[0, max_val_comp * 1.55], nticks=5),
+                    yaxis2=dict(title=dict(text="Quantidade (notas)",
+                                           font=dict(color="#6d8099", size=11, family="Inter")),
+                                overlaying="y", side="right", showgrid=False, zeroline=False,
+                                showticklabels=True,
+                                tickfont=dict(color="#6d8099", size=10, family="JetBrains Mono"),
+                                range=[0, max_qtd_comp * 3.6], nticks=4),
+                    legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
+                                font=dict(color="#8fa3bd", size=11.5),
+                                orientation="h", x=0.5, xanchor="center", y=1.11,
+                                itemsizing="constant"),
+                )
+                st.plotly_chart(fig_comp, use_container_width=True,
+                                config={"displayModeBar": False})
+
+                # ── Rodapé do card ──────────────────────────────────────────
+                _var_cor = "#f87171" if var_pct > 0 else "#34d399" if var_pct < 0 else "#8fa3bd"
+                _var_seta = "▲" if var_pct > 0 else "▼" if var_pct < 0 else "■"
+                st.markdown(f"""
+                <div class="cc-foot">
+                  <div class="cc-foot-i">
+                    <span class="cc-foot-lab"><i class="d" style="background:#34d399;"></i>{_lbl_ref} — referência</span>
+                    <span class="cc-foot-val" style="color:#34d399;">{fmt_brl0(total_atual)}</span>
+                  </div>
+                  <div class="cc-foot-sep"></div>
+                  <div class="cc-foot-i">
+                    <span class="cc-foot-lab"><i class="d" style="background:#60a5fa;"></i>{_lbl_ant} — semana passada</span>
+                    <span class="cc-foot-val" style="color:#93c5fd;">{fmt_brl0(total_semana)}</span>
+                  </div>
+                  <div class="cc-foot-sep"></div>
+                  <div class="cc-foot-i">
+                    <span class="cc-foot-lab">Variação</span>
+                    <span class="cc-foot-val" style="color:{_var_cor};">{_var_seta} {var_pct:+.1f}%</span>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
+            panel_open(f"Comparação por placa — {nome_dia}",
+                       tag=f"{dia_ref.strftime('%d/%m')} × {dia_sem_passada.strftime('%d/%m')}", icon="📆")
             st.info("Sem registros de placa nas datas comparadas.")
-        panel_close()
+            panel_close()
 
     # ── Ocorrências de retorno ──────────────────────────────────────────────
     if COL_MOTIVO:
