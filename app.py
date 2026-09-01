@@ -1302,7 +1302,7 @@ if pagina == "Dashboard":
             st.plotly_chart(
                 make_combo_chart(df_placa, COL_PLACA, "Valor", "Qtd", "", "", ramp(len(df_placa)),
                                  customdata=_cd_placa, extra_hover=_eh_placa),
-                use_container_width=True)
+                use_container_width=True, key="pc_1")
             st.markdown(
                 '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
                 'margin-top:-10px;padding-left:6px;">'
@@ -1331,7 +1331,7 @@ if pagina == "Dashboard":
                              linha_ponto="#fde68a", linha_texto="#fcd34d",
                              linha_rotulo="Notas",
                              customdata=_cd_mot, extra_hover="<br>🚚 %{customdata[0]}"),
-            use_container_width=True)
+            use_container_width=True, key="pc_2")
         st.markdown(
             '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
             'margin-top:-10px;padding-left:6px;">'
@@ -1356,7 +1356,7 @@ if pagina == "Dashboard":
                              linha_ponto="#bae6fd", linha_texto="#7dd3fc",
                              linha_rotulo="Notas",
                              customdata=_cd_ent, extra_hover="<br>🚚 %{customdata[0]}"),
-            use_container_width=True)
+            use_container_width=True, key="pc_3")
         st.markdown(
             '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
             'margin-top:-10px;padding-left:6px;">'
@@ -1375,7 +1375,7 @@ if pagina == "Dashboard":
                              linha_ponto="#d1fae5", linha_texto="#a7f3d0", linha_rotulo="Clientes",
                              customdata=df_placa[["Motorista", "Entregador"]].values,
                              extra_hover="<br>🧑‍✈️ %{customdata[0]}<br>📦 %{customdata[1]}"),
-            use_container_width=True)
+            use_container_width=True, key="pc_4")
         st.markdown(
             '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
             'margin-top:-10px;padding-left:6px;">'
@@ -1418,7 +1418,7 @@ if pagina == "Dashboard":
             yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
             showlegend=False,
         )
-        st.plotly_chart(fig_acum, use_container_width=True)
+        st.plotly_chart(fig_acum, use_container_width=True, key="pc_5")
         st.markdown(
             f'<p style="font-size:0.95rem;color:#9fb2c9;text-align:center;margin-top:-8px;">'
             f'Hoje <b class="num" style="color:#fbbf24;font-size:1.15rem;">{fmt_brl0(valor_hoje)}</b>'
@@ -1475,7 +1475,7 @@ if pagina == "Dashboard":
                      ref_pxs=_ref_ev, plot_h=_plot_h_ev,
                      frac_scale=(1 / (_max_qtd_ev * 1.55)) if _max_qtd_ev > 0 else 0,
                      cor="#fcd34d", size=14, gap=26)
-        st.plotly_chart(fig_ev, use_container_width=True)
+        st.plotly_chart(fig_ev, use_container_width=True, key="pc_6")
     else:
         st.info("Nenhum lançamento no mês corrente ainda.")
     panel_close()
@@ -1490,7 +1490,7 @@ if pagina == "Dashboard":
                         .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL, "sum"))
                         .reset_index().sort_values("Valor", ascending=True).tail(8))
             if not df_m_top.empty:
-                st.plotly_chart(make_hbar(df_m_top, "Valor", COL_MOTIVO, RED, 400), use_container_width=True)
+                st.plotly_chart(make_hbar(df_m_top, "Valor", COL_MOTIVO, RED, 400), use_container_width=True, key="pc_7")
             else:
                 st.info("Sem motivos no filtro atual.")
         panel_close()
@@ -1503,38 +1503,9 @@ if pagina == "Dashboard":
                         .reset_index().sort_values("Qtd", ascending=True).tail(8))
             if not df_v_top.empty:
                 st.plotly_chart(make_hbar(df_v_top, "Qtd", COL_PLACA, BLUE, 400, money=False),
-                                use_container_width=True)
+                                use_container_width=True, key="pc_8")
             else:
                 st.info("Sem veículos no filtro atual.")
-        panel_close()
-
-    # ── Rankings de equipe (motorista e entregador) ─────────────────────────
-    e1, e2 = st.columns(2, gap="medium")
-    with e1:
-        panel_open("Top motoristas", tag="R$", icon="🧑‍✈️")
-        if not df_motorista.empty:
-            _dm = df_motorista.sort_values("Valor", ascending=True).tail(10)
-            st.plotly_chart(make_hbar(_dm, "Valor", COL_MOT_NOME, MIXED, 420),
-                            use_container_width=True)
-            _tm = _dm.iloc[-1]
-            st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
-                        f'{str(_tm[COL_MOT_NOME])[:34]} — {int(_tm["Qtd"])} devoluções '
-                        f'({fmt_brl0(_tm["Valor"])})</p>', unsafe_allow_html=True)
-        else:
-            st.info("Sem motoristas vinculados no filtro atual.")
-        panel_close()
-    with e2:
-        panel_open("Top entregadores", tag="R$", icon="📦")
-        if not df_entregador.empty:
-            _de = df_entregador.sort_values("Valor", ascending=True).tail(10)
-            st.plotly_chart(make_hbar(_de, "Valor", COL_ENT_NOME, VIOLET, 420),
-                            use_container_width=True)
-            _te = _de.iloc[-1]
-            st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
-                        f'{str(_te[COL_ENT_NOME])[:34]} — {int(_te["Qtd"])} devoluções '
-                        f'({fmt_brl0(_te["Valor"])})</p>', unsafe_allow_html=True)
-        else:
-            st.info("Sem entregadores vinculados no filtro atual.")
         panel_close()
 
     # ── Comparação semanal por placa (lógica original preservada) ───────────
@@ -1699,7 +1670,7 @@ if pagina == "Dashboard":
                              cor="#fca5a5", size=14, ocupados=_ocup, gap=26)
 
                 st.plotly_chart(fig_comp, use_container_width=True,
-                                config={"displayModeBar": False})
+                                config={"displayModeBar": False}, key="pc_9")
 
                 # ── Rodapé do card ──────────────────────────────────────────
                 _var_cor = "#f87171" if var_pct > 0 else "#34d399" if var_pct < 0 else "#8fa3bd"
@@ -1739,7 +1710,7 @@ if pagina == "Dashboard":
             fig_mv = make_combo_chart(df_mot_v, COL_MOTIVO, "Valor", "Qtd", "", "", ramp(n_m, 3, 6))
             fig_mv.update_layout(height=max(430, min(n_m * 58, 660)), margin=dict(t=54, b=110, l=10, r=30))
             fig_mv.update_xaxes(tickangle=-35, automargin=True)
-            st.plotly_chart(fig_mv, use_container_width=True)
+            st.plotly_chart(fig_mv, use_container_width=True, key="pc_10")
             with st.expander("Ver tabela de motivos"):
                 df_mt = df_mot_v.copy()
                 df_mt["Valor (R$)"] = df_mt["Valor"].apply(fmt_brl)
@@ -1759,7 +1730,7 @@ if pagina == "Dashboard":
                      .groupby(COL_MOTIVO).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
                      .reset_index().sort_values("Valor", ascending=True).tail(8))
             if not df_m2.empty:
-                st.plotly_chart(make_hbar(df_m2, "Valor", COL_MOTIVO, RED, 400), use_container_width=True)
+                st.plotly_chart(make_hbar(df_m2, "Valor", COL_MOTIVO, RED, 400), use_container_width=True, key="pc_11")
                 top = df_m2.iloc[-1]
                 pct = top["Valor"] / total_val * 100 if total_val > 0 else 0
                 st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
@@ -1773,7 +1744,7 @@ if pagina == "Dashboard":
                      .groupby(COL_CLIENTE).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
                      .reset_index().sort_values("Valor", ascending=True).tail(10))
             if not df_cl.empty:
-                st.plotly_chart(make_hbar(df_cl, "Valor", COL_CLIENTE, MIXED, 400), use_container_width=True)
+                st.plotly_chart(make_hbar(df_cl, "Valor", COL_CLIENTE, MIXED, 400), use_container_width=True, key="pc_12")
                 top_c = df_cl.iloc[-1]
                 st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
                             f'{str(top_c[COL_CLIENTE])[:30]} — {fmt_brl0(top_c["Valor"])}</p>',
@@ -1786,7 +1757,7 @@ if pagina == "Dashboard":
                      .groupby(COL_VENDEDOR).agg(Valor=(VALOR_COL, "sum"), Qtd=(VALOR_COL, "count"))
                      .reset_index().sort_values("Valor", ascending=True).tail(10))
             if not df_vv.empty:
-                st.plotly_chart(make_hbar(df_vv, "Valor", COL_VENDEDOR, BLUE, 400), use_container_width=True)
+                st.plotly_chart(make_hbar(df_vv, "Valor", COL_VENDEDOR, BLUE, 400), use_container_width=True, key="pc_13")
                 top_v = df_vv.iloc[-1]
                 st.markdown(f'<p style="font-size:0.73rem;color:#7c8ea8;padding:0 4px 10px;">'
                             f'{str(top_v[COL_VENDEDOR])[:30]} — {int(top_v["Qtd"])} devoluções</p>',
@@ -1805,7 +1776,7 @@ if pagina == "Dashboard":
                                 color_discrete_sequence=MIXED, hole=0.62)
                 fig_dd.update_traces(textfont=dict(size=12, color="#e8f1fb"),
                                      marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
-                st.plotly_chart(plotly_dark(fig_dd, height=360), use_container_width=True)
+                st.plotly_chart(plotly_dark(fig_dd, height=360), use_container_width=True, key="pc_14")
         panel_close()
     with c5:
         panel_open("Ranking de motivos", tag="Consolidado", icon="📊")
@@ -1856,7 +1827,7 @@ elif pagina == "Equipe":
                                   customdata=df_mot_pg[["Placas"]].values,
                                   extra_hover="<br>🚚 %{customdata[0]}")
         fig_mp.update_xaxes(tickangle=-35, automargin=True)
-        st.plotly_chart(fig_mp, use_container_width=True)
+        st.plotly_chart(fig_mp, use_container_width=True, key="pc_15")
     panel_close()
 
     panel_open("Entregadores — valor e quantidade de notas",
@@ -1871,7 +1842,7 @@ elif pagina == "Equipe":
                                   customdata=df_ent_pg[["Placas"]].values,
                                   extra_hover="<br>🚚 %{customdata[0]}")
         fig_ep.update_xaxes(tickangle=-35, automargin=True)
-        st.plotly_chart(fig_ep, use_container_width=True)
+        st.plotly_chart(fig_ep, use_container_width=True, key="pc_16")
     panel_close()
 
     q1, q2 = st.columns(2, gap="medium")
@@ -2039,7 +2010,7 @@ elif pagina == "Reentregas":
                          .reset_index().sort_values("Qtd", ascending=False))
                 if not df_pr.empty:
                     st.plotly_chart(make_bar_simple(df_pr, placaant_col, "Qtd", ramp(len(df_pr), 3, 6, C_OK)),
-                                    use_container_width=True)
+                                    use_container_width=True, key="pc_17")
                 else:
                     st.info("Sem placas no filtro atual.")
             else:
@@ -2054,7 +2025,7 @@ elif pagina == "Reentregas":
                          .reset_index().sort_values("Qtd", ascending=False))
                 if not df_mr.empty:
                     st.plotly_chart(make_bar_simple(df_mr, motivo_r_col2, "Qtd", ramp(len(df_mr), 3, 6)),
-                                    use_container_width=True)
+                                    use_container_width=True, key="pc_18")
                 else:
                     st.info("Sem motivos no filtro atual.")
             else:
@@ -2071,7 +2042,7 @@ elif pagina == "Reentregas":
                         .reset_index().sort_values("Qtd", ascending=False))
             if not df_mot_r.empty:
                 st.plotly_chart(make_bar_simple(df_mot_r, "_MOT", "Qtd", ramp(len(df_mot_r), 3, 6)),
-                                use_container_width=True)
+                                use_container_width=True, key="pc_19")
             else:
                 st.info("Sem motoristas vinculados no filtro atual.")
             panel_close()
@@ -2085,7 +2056,7 @@ elif pagina == "Reentregas":
                           .reset_index().sort_values("Qtd", ascending=True).tail(8))
                 if not df_mr2.empty:
                     st.plotly_chart(make_hbar(df_mr2, "Qtd", motivo_r_col2, RED, 380, money=False),
-                                    use_container_width=True)
+                                    use_container_width=True, key="pc_20")
             panel_close()
         with cr2:
             panel_open("Top 10 clientes", tag="Qtd", icon="👥")
@@ -2095,7 +2066,7 @@ elif pagina == "Reentregas":
                           .reset_index().sort_values("Qtd", ascending=True).tail(10))
                 if not df_clr.empty:
                     st.plotly_chart(make_hbar(df_clr, "Qtd", cliente_r_col, MIXED, 380, money=False),
-                                    use_container_width=True)
+                                    use_container_width=True, key="pc_21")
             panel_close()
         with cr3:
             panel_open("Top vendedores", tag="Qtd", icon="🧑‍💼")
@@ -2105,7 +2076,7 @@ elif pagina == "Reentregas":
                            .reset_index().sort_values("Qtd", ascending=True).tail(10))
                 if not df_nomr.empty:
                     st.plotly_chart(make_hbar(df_nomr, "Qtd", nome_r_col, BLUE, 380, money=False),
-                                    use_container_width=True)
+                                    use_container_width=True, key="pc_22")
             panel_close()
 
         cr4, cr5 = st.columns([1, 2], gap="medium")
@@ -2120,7 +2091,7 @@ elif pagina == "Reentregas":
                                     color_discrete_sequence=MIXED, hole=0.62)
                     fig_pr.update_traces(textfont=dict(size=12, color="#e8f1fb"),
                                          marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
-                    st.plotly_chart(plotly_dark(fig_pr, height=360), use_container_width=True)
+                    st.plotly_chart(plotly_dark(fig_pr, height=360), use_container_width=True, key="pc_23")
             panel_close()
         with cr5:
             panel_open("Ranking de motivos de transferência", tag="Consolidado", icon="📊")
@@ -2244,7 +2215,7 @@ elif pagina == "Detalhes Reentregas":
                              .reset_index().sort_values("Qtd", ascending=False))
                 if not df_gplaca.empty:
                     st.plotly_chart(make_bar_simple(df_gplaca, _det_placa_col, "Qtd", ramp(len(df_gplaca), 3, 6)),
-                                    use_container_width=True)
+                                    use_container_width=True, key="pc_24")
                 else:
                     st.info("Sem placas para o filtro selecionado.")
             else:
@@ -2260,7 +2231,7 @@ elif pagina == "Detalhes Reentregas":
                             .reset_index().sort_values("Qtd", ascending=False))
                 if not df_gmotn.empty:
                     st.plotly_chart(make_bar_simple(df_gmotn, "_MOT", "Qtd", ramp(len(df_gmotn), 3, 6, C_OK)),
-                                    use_container_width=True)
+                                    use_container_width=True, key="pc_25")
                 else:
                     st.info("Sem motoristas para o filtro selecionado.")
             else:
@@ -2422,7 +2393,7 @@ elif pagina == "Clientes":
             panel_open("Clientes com maior valor devolvido", tag="Top 15", icon="👥")
             df_top15 = df_cli_all.sort_values("Valor", ascending=True).tail(15)
             if not df_top15.empty:
-                st.plotly_chart(make_hbar(df_top15, "Valor", COL_CLIENTE, MIXED, 560), use_container_width=True)
+                st.plotly_chart(make_hbar(df_top15, "Valor", COL_CLIENTE, MIXED, 560), use_container_width=True, key="pc_26")
             else:
                 st.info("Sem clientes no filtro atual.")
             panel_close()
@@ -2431,7 +2402,7 @@ elif pagina == "Clientes":
             df_topq = df_cli_all.sort_values("Qtd", ascending=True).tail(15)
             if not df_topq.empty:
                 st.plotly_chart(make_hbar(df_topq, "Qtd", COL_CLIENTE, BLUE, 560, money=False),
-                                use_container_width=True)
+                                use_container_width=True, key="pc_27")
             panel_close()
 
         panel_open("Detalhamento por cliente", tag=f"{len(df_cli_all)} clientes", icon="📋")
@@ -2471,7 +2442,7 @@ elif pagina == "Motivos":
             fig_m.update_layout(height=max(440, min(len(df_mot_all) * 58, 680)),
                                 margin=dict(t=54, b=120, l=10, r=30))
             fig_m.update_xaxes(tickangle=-35, automargin=True)
-            st.plotly_chart(fig_m, use_container_width=True)
+            st.plotly_chart(fig_m, use_container_width=True, key="pc_28")
         else:
             st.info("Sem motivos no filtro atual.")
         panel_close()
@@ -2485,7 +2456,7 @@ elif pagina == "Motivos":
                                 color_discrete_sequence=MIXED, hole=0.62)
                 fig_pm.update_traces(textfont=dict(size=12, color="#e8f1fb"),
                                      marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
-                st.plotly_chart(plotly_dark(fig_pm, height=420), use_container_width=True)
+                st.plotly_chart(plotly_dark(fig_pm, height=420), use_container_width=True, key="pc_29")
             panel_close()
         with m2:
             panel_open("Ranking completo", tag=f"{len(df_mot_all)} motivos", icon="📊")
@@ -2529,7 +2500,7 @@ elif pagina == "Veículos":
                 make_combo_chart(df_pl_all, COL_PLACA, "Valor", "Qtd", "", "", ramp(len(df_pl_all)),
                                  customdata=df_pl_all[["Motorista", "Entregador"]].values,
                                  extra_hover="<br>🧑‍✈️ %{customdata[0]}<br>📦 %{customdata[1]}"),
-                use_container_width=True)
+                use_container_width=True, key="pc_30")
         else:
             st.info("Sem veículos no filtro atual.")
         panel_close()
@@ -2540,7 +2511,7 @@ elif pagina == "Veículos":
             df_pq = df_pl_all.sort_values("Qtd", ascending=True).tail(12)
             if not df_pq.empty:
                 st.plotly_chart(make_hbar(df_pq, "Qtd", COL_PLACA, BLUE, 460, money=False),
-                                use_container_width=True)
+                                use_container_width=True, key="pc_31")
             panel_close()
         with v2:
             panel_open("Detalhamento por veículo", tag=f"{len(df_pl_all)} placas", icon="📋")
