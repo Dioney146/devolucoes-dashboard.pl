@@ -266,11 +266,11 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.cc-head){
 .cc-sub{font-size:0.76rem;color:#7c8ea8;margin:7px 0 0;font-weight:400;}
 .cc-head-r{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;}
 .cc-mini{display:flex;flex-direction:column;justify-content:center;gap:3px;
-  min-width:132px;padding:11px 16px;border-radius:14px;
+  min-width:142px;padding:12px 18px;border-radius:14px;
   background:rgba(255,255,255,0.032);border:1px solid rgba(120,170,225,0.13);}
 .cc-mini-lab{font-size:0.6rem;color:#6d8099;font-weight:700;letter-spacing:.15em;
   text-transform:uppercase;}
-.cc-mini-val{font-family:'JetBrains Mono',monospace;font-size:1.16rem;font-weight:700;
+.cc-mini-val{font-family:'JetBrains Mono',monospace;font-size:1.32rem;font-weight:700;
   letter-spacing:-0.02em;line-height:1.1;}
 .cc-mini-sub{font-size:0.63rem;color:#4e5f78;}
 .cc-ctrls{display:flex;align-items:center;gap:8px;}
@@ -282,12 +282,13 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.cc-head){
   padding:15px 20px;border-radius:16px;
   background:linear-gradient(120deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015));
   border:1px solid rgba(120,170,225,0.11);}
-.cc-foot-i{display:flex;flex-direction:column;gap:5px;flex:1 1 170px;min-width:150px;}
+.cc-foot-i{display:flex;flex-direction:column;gap:4px;flex:1 1 150px;min-width:132px;}
+.cc-foot-i .cc-mini-sub{font-size:0.66rem;color:#6d8099;}
 .cc-foot-lab{display:flex;align-items:center;gap:7px;font-size:0.66rem;color:#6d8099;
   font-weight:700;letter-spacing:.13em;text-transform:uppercase;}
 .cc-foot-lab .d{width:7px;height:7px;border-radius:50%;display:inline-block;}
-.cc-foot-val{font-family:'JetBrains Mono',monospace;font-size:1.24rem;font-weight:700;
-  letter-spacing:-0.02em;}
+.cc-foot-val{font-family:'JetBrains Mono',monospace;font-size:1.34rem;font-weight:700;
+  letter-spacing:-0.02em;color:#f8fafc;}
 .cc-foot-sep{width:1px;align-self:stretch;
   background:linear-gradient(180deg,transparent,rgba(120,170,225,0.18),transparent);}
 @media (max-width:900px){
@@ -1165,9 +1166,9 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
 
     # Tamanhos que encolhem conforme a quantidade de categorias, para o texto
     # nunca invadir a barra vizinha nem sair da área do gráfico.
-    fs_val = 17 if n <= 14 else 15 if n <= 22 else 13
-    fs_lin = 17 if n <= 14 else 15 if n <= 22 else 13
-    fs_cat = 14 if n <= 14 else 12 if n <= 26 else 11
+    fs_val = 22 if n <= 14 else 20 if n <= 22 else 18
+    fs_lin = 20 if n <= 14 else 18 if n <= 22 else 16
+    fs_cat = 15 if n <= 14 else 13 if n <= 26 else 12
 
     fig.add_trace(go.Bar(
         x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
@@ -1193,22 +1194,22 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
         customdata=customdata, hovertemplate=_hl, yaxis="y2",
     ))
 
-    h = max(620, min(n * 60, 1000))
-    mt, mb = 70, 118
+    h = max(660, min(n * 64, 1040))
+    mt, mb = 76, 122
     fig.update_layout(**base_layout(h, dict(t=mt, b=mb, l=8, r=14), legenda=True))
     fig.update_layout(
         bargap=0.42, bargroupgap=0.08,
         title=dict(text=(f"<span style='font-size:13px;color:{TXT_LOW}'>{periodo}</span>"
                          if periodo else ""), x=0.5, xanchor="center", y=0.985),
         xaxis=eixo_x(df_data[x_col], size=fs_cat),
-        yaxis=dict(**eixo_y_oculto(max_val * 1.42), side="left"),
+        yaxis=dict(**eixo_y_oculto(max_val * 1.52), side="left"),
         yaxis2=dict(showticklabels=False, overlaying="y", side="right", showgrid=False,
                     zeroline=False, range=[0, max_qtd * 2.9]),
     )
 
     # ── Rótulos da linha: posicionados dinamicamente para não colidir ───────
     plot_h = h - mt - mb
-    ref_barra = [float(v) / (max_val * 1.42) * plot_h + 22 if max_val > 0 else 22
+    ref_barra = [float(v) / (max_val * 1.52) * plot_h + 26 if max_val > 0 else 26
                  for v in df_data[val_col]]
     anotar_linha(fig, list(df_data[x_col]), list(df_data[qtd_col]),
                  ref_pxs=ref_barra, plot_h=plot_h,
@@ -1220,8 +1221,8 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
 def make_bar_simple(df_data, x_col, y_col, bar_colors, title_txt="", ylabel="Qtd"):
     """Barras verticais de quantidade — valor em branco negrito sobre a barra."""
     n = len(df_data)
-    fs_val = 15 if n <= 14 else 13 if n <= 24 else 11
-    fs_cat = 13 if n <= 14 else 11 if n <= 26 else 10
+    fs_val = 19 if n <= 14 else 17 if n <= 24 else 15
+    fs_cat = 14 if n <= 14 else 12 if n <= 26 else 11
     _max = float(df_data[y_col].max()) if n else 1
 
     fig = go.Figure()
@@ -1235,14 +1236,14 @@ def make_bar_simple(df_data, x_col, y_col, bar_colors, title_txt="", ylabel="Qtd
         textfont=dict(size=fs_val, color=TXT_HI, family=F_NUM),
         hovertemplate="<b>%{x}</b><br>" + ylabel + ": %{y}<extra></extra>",
     ))
-    h = max(400, min(n * 42, 620))
+    h = max(430, min(n * 44, 650))
     fig.update_layout(**base_layout(h, dict(t=34 if title_txt else 22, b=96, l=10, r=16)))
     fig.update_layout(
         bargap=0.42,
         title=dict(text=(f"<span style='font-size:12px;color:{TXT_LOW}'>{title_txt}</span>"
                          if title_txt else ""), x=0.5, xanchor="center"),
         xaxis=eixo_x(df_data[x_col], size=fs_cat),
-        yaxis=eixo_y_oculto(_max * 1.22),
+        yaxis=eixo_y_oculto(_max * 1.32),
     )
     return fig
 
@@ -1260,11 +1261,11 @@ def make_hbar(df_data, x_col, y_col, color_scale=None, height=400, money=True):
     pos = list(range(n))[::-1]
     cores = [C_CRIT if p == 0 else C_WARN if p <= 2 else C_INFO for p in pos]
 
-    fs_val = 15 if n <= 10 else 13
-    fs_cat = 13 if n <= 10 else 12
+    fs_val = 18 if n <= 10 else 16
+    fs_cat = 14 if n <= 10 else 13
     textos = [fmt_brl0(v) if money else f"<b>{int(v)}</b>" for v in df_data[x_col]]
     # margem à direita proporcional ao maior rótulo, para o número nunca cortar
-    mr = max(76, min(int(max(len(t) for t in textos) * 9.5) + 26, 190))
+    mr = max(88, min(int(max(len(t) for t in textos) * 11.5) + 30, 220))
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -1281,7 +1282,7 @@ def make_hbar(df_data, x_col, y_col, color_scale=None, height=400, money=True):
         bargap=0.38,
         xaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
                    linecolor="rgba(0,0,0,0)",
-                   range=[0, float(df_data[x_col].max()) * 1.18 if n else 1]),
+                   range=[0, float(df_data[x_col].max()) * 1.22 if n else 1]),
         yaxis=dict(tickfont=dict(color=TXT_MID, size=fs_cat, family=F_TXT),
                    gridcolor="rgba(0,0,0,0)", linecolor="rgba(0,0,0,0)",
                    automargin=True, ticks=""),
@@ -1307,7 +1308,7 @@ def make_donut(df_data, name_col, val_col, height=380, money=True, centro_rot="T
         marker=dict(colors=cores[:n] if n <= len(cores) else None,
                     line=dict(color="rgba(4,8,15,0.95)", width=2)),
         textinfo="percent", textposition="inside", insidetextorientation="horizontal",
-        textfont=dict(size=13, color="#06101c", family=F_NUM),
+        textfont=dict(size=15, color="#06101c", family=F_NUM),
         customdata=list(df_data[name_col]),
         hovertemplate="<b>%{customdata}</b><br>%{value:,.0f}<br>%{percent}<extra></extra>",
     ))
@@ -1617,7 +1618,7 @@ if pagina == "Dashboard":
         valor_hoje = df_mes_dia.loc[df_mes_dia["_DIA"] == hoje, "Valor"].sum()
 
         _n_ac = len(df_mes_dia)
-        _fs_ac = 14 if _n_ac <= 14 else 12 if _n_ac <= 24 else 11
+        _fs_ac = 17 if _n_ac <= 14 else 15 if _n_ac <= 24 else 13
         _max_ac = float(df_mes_dia["Acumulado"].max()) if _n_ac else 1
 
         fig_acum = go.Figure()
@@ -1637,7 +1638,7 @@ if pagina == "Dashboard":
             xaxis=dict(tickfont=dict(size=_fs_ac, color=TXT_MID, family=F_NUM),
                        showgrid=False, linecolor=AXIS, zeroline=False,
                        ticks="outside", ticklen=4, tickcolor=AXIS, automargin=True),
-            yaxis=eixo_y_oculto(_max_ac * 1.22),
+            yaxis=eixo_y_oculto(_max_ac * 1.30),
         )
         st.plotly_chart(fig_acum, use_container_width=True, key="pc_5")
         st.markdown(
@@ -1659,7 +1660,7 @@ if pagina == "Dashboard":
         _max_val_ev = float(df_ev["Valor"].max()) if len(df_ev) else 1
         _max_qtd_ev = float(df_ev["Qtd"].max()) if len(df_ev) else 1
         _n_ev = len(df_ev)
-        _fs_ev = 14 if _n_ev <= 14 else 12 if _n_ev <= 24 else 11
+        _fs_ev = 17 if _n_ev <= 14 else 15 if _n_ev <= 24 else 13
         fig_ev.add_trace(go.Bar(
             x=df_ev["_DIA"], y=df_ev["Valor"], name="Valor (R$)",
             marker=dict(color=C_INFO, opacity=0.92,
@@ -1680,13 +1681,13 @@ if pagina == "Dashboard":
             xaxis=dict(tickfont=dict(size=_fs_ev, color=TXT_MID, family=F_NUM),
                        showgrid=False, linecolor=AXIS, zeroline=False,
                        ticks="outside", ticklen=4, tickcolor=AXIS, automargin=True),
-            yaxis=eixo_y_oculto(_max_val_ev * 1.30),
+            yaxis=eixo_y_oculto(_max_val_ev * 1.38),
             yaxis2=dict(overlaying="y", side="right", showgrid=False,
                         showticklabels=False, zeroline=False,
                         range=[0, _max_qtd_ev * 1.60]),
         )
         _plot_h_ev = 420 - 48 - 46
-        _ref_ev = [float(v) / (_max_val_ev * 1.30) * _plot_h_ev + 20 if _max_val_ev > 0 else 20
+        _ref_ev = [float(v) / (_max_val_ev * 1.38) * _plot_h_ev + 24 if _max_val_ev > 0 else 24
                    for v in df_ev["Valor"]]
         anotar_linha(fig_ev, list(df_ev["_DIA"]), list(df_ev["Qtd"]),
                      ref_pxs=_ref_ev, plot_h=_plot_h_ev,
@@ -1772,27 +1773,30 @@ if pagina == "Dashboard":
             _lbl_ant = dia_sem_passada.strftime("%d/%m")
 
             with st.container(border=True):
-                # ── Cabeçalho do card ───────────────────────────────────────
+                # ── Cabeçalho: totais e variação lado a lado ────────────────
+                _var_cor = C_CRIT if var_pct > 0 else C_OK if var_pct < 0 else C_NEUT
+                _var_seta = "▲" if var_pct > 0 else "▼" if var_pct < 0 else "■"
                 st.markdown(f"""
                 <div class="cc-head">
                   <div class="cc-head-l">
-                    <p class="cc-title">Devoluções por placa — valor e quantidade</p>
-                    <p class="cc-sub">Comparativo: {_lbl_ref} (referência) vs {_lbl_ant} (semana passada) · {nome_dia}</p>
+                    <p class="cc-title">Devoluções por placa — {_lbl_ref} vs {_lbl_ant}</p>
+                    <p class="cc-sub">{nome_dia} · barra = valor devolvido · ponto = notas</p>
                   </div>
                   <div class="cc-head-r">
                     <div class="cc-mini">
                       <span class="cc-mini-lab">Total {_lbl_ref}</span>
-                      <span class="cc-mini-val" style="color:#38bdf8;">{fmt_brl0(total_atual)}</span>
-                      <span class="cc-mini-sub">valor devolvido</span>
+                      <span class="cc-mini-val" style="color:{C_INFO};">{fmt_brl0(total_atual)}</span>
+                      <span class="cc-mini-sub">referência</span>
                     </div>
                     <div class="cc-mini">
                       <span class="cc-mini-lab">Total {_lbl_ant}</span>
-                      <span class="cc-mini-val" style="color:#cbd5e1;">{fmt_brl0(total_semana)}</span>
-                      <span class="cc-mini-sub">valor devolvido</span>
+                      <span class="cc-mini-val" style="color:{P_NEUT};">{fmt_brl0(total_semana)}</span>
+                      <span class="cc-mini-sub">semana passada</span>
                     </div>
-                    <div class="cc-ctrls">
-                      <span class="cc-pick">Por placa ▾</span>
-                      <span class="cc-dots">⋮</span>
+                    <div class="cc-mini" style="border-color:{_var_cor}44;">
+                      <span class="cc-mini-lab">Variação</span>
+                      <span class="cc-mini-val" style="color:{_var_cor};">{_var_seta} {var_pct:+.1f}%</span>
+                      <span class="cc-mini-sub">sobre a semana passada</span>
                     </div>
                   </div>
                 </div>
@@ -1806,103 +1810,172 @@ if pagina == "Dashboard":
                 htmpl = (f"<b>Placa %{{x}}</b><br>"
                          f"🧑‍✈️ %{{customdata[4]}}<br>"
                          f"📦 %{{customdata[5]}}<br>"
-                         f"<span style='color:#38bdf8'>●</span> {_lbl_ref} — %{{customdata[0]}}<br>"
-                         f"<span style='color:#cbd5e1'>●</span> {_lbl_ant} — %{{customdata[1]}}<br>"
-                         f"<span style='color:#fbbf24'>●</span> Notas {_lbl_ref} — %{{customdata[2]}}<br>"
-                         f"<span style='color:#8fa3bb'>●</span> Notas {_lbl_ant} — %{{customdata[3]}}"
+                         f"<span style='color:{C_INFO}'>●</span> {_lbl_ref} — %{{customdata[0]}}<br>"
+                         f"<span style='color:{P_NEUT}'>●</span> {_lbl_ant} — %{{customdata[1]}}<br>"
+                         f"<span style='color:{C_QTY}'>●</span> Notas {_lbl_ref} — %{{customdata[2]}}<br>"
+                         f"<span style='color:{C_NEUT}'>●</span> Notas {_lbl_ant} — %{{customdata[3]}}"
                          f"<extra></extra>")
 
                 n_comp = len(df_comp)
                 max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
                 max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
 
-                # Números do comparativo: legibilidade tem prioridade sobre a
-                # densidade — mesmo com muitas placas o valor continua grande.
-                _fs_v_comp = 19 if n_comp <= 10 else 17 if n_comp <= 16 else 15
-                _fs_c_comp = 15 if n_comp <= 10 else 14 if n_comp <= 18 else 12
-                # Rótulo em branco só onde há valor: barra zerada polui a leitura.
+                # ── Geometria: as barras ficam confinadas à metade de baixo e
+                # as linhas a uma faixa exclusiva no alto. É isso que garante
+                # que nenhum número de nota encoste em um valor de R$, sem
+                # precisar reduzir fonte nenhuma.
+                _h_comp = max(600, min(n_comp * 78, 940))
+                _mt, _mb = 78, 112
+                _plot_h = _h_comp - _mt - _mb
+                TOPO_BARRA = 0.46          # a maior barra ocupa 46% da altura útil
+                FAIXA_LO, FAIXA_HI = 0.68, 0.91   # faixa reservada às linhas
+
+                _range_val = max_val_comp / TOPO_BARRA
+                _qs = list(df_comp["Qtd_Atual"]) + list(df_comp["Qtd_Semana"])
+                _qmin, _qmax = min(_qs), max(_qs)
+                if _qmax > _qmin:
+                    _span = (_qmax - _qmin) / (FAIXA_HI - FAIXA_LO)
+                    _q_lo = _qmin - FAIXA_LO * _span
+                    _q_hi = _q_lo + _span
+                else:                       # todas as quantidades iguais
+                    _centro = (FAIXA_LO + FAIXA_HI) / 2
+                    _span = max(_qmax, 1) / _centro
+                    _q_lo, _q_hi = 0, _span
+
+                # Fontes generosas e fixas — o layout se adapta movendo rótulos,
+                # nunca encolhendo o número.
+                _fs_val = 25 if n_comp <= 10 else 23 if n_comp <= 18 else 21
+                _fs_qtd = 19 if n_comp <= 18 else 18
+                _fs_cat = 16 if n_comp <= 10 else 14 if n_comp <= 20 else 13
+
+                # Zero da semana passada não vira uma fileira de "R$ 0": fica
+                # um traço discreto, só para marcar a ausência.
                 _txt_at = [fmt_brl0(v) if v > 0 else "" for v in df_comp["Valor_Atual"]]
-                _txt_sm = [fmt_brl0(v) if v > 0 else "" for v in df_comp["Valor_Semana"]]
+                _txt_sm = [fmt_brl0(v) if v > 0 else "–" for v in df_comp["Valor_Semana"]]
+                _cor_sm = [P_NEUT if v > 0 else "rgba(143,163,187,0.45)"
+                           for v in df_comp["Valor_Semana"]]
 
                 fig_comp = go.Figure()
-                # Série histórica em cinza neutro, série de referência em azul:
-                # a cor diz o papel do dado, não o gráfico.
                 fig_comp.add_trace(go.Bar(
                     x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
                     name=f"{_lbl_ant} — semana passada",
-                    marker=dict(color="rgba(143,163,187,0.38)", opacity=1,
-                                line=dict(color="rgba(203,213,225,0.35)", width=1)),
-                    width=0.30,
+                    marker=dict(color="rgba(143,163,187,0.30)", opacity=1,
+                                line=dict(color="rgba(203,213,225,0.30)", width=1)),
+                    width=0.28,
                     text=_txt_sm, textposition="outside", cliponaxis=False,
-                    textfont=dict(size=_fs_v_comp, color=P_NEUT, family=F_NUM),
+                    textfont=dict(size=_fs_val - 3, color=_cor_sm, family=F_NUM),
                     customdata=cdata, hovertemplate=htmpl))
                 fig_comp.add_trace(go.Bar(
                     x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
                     name=f"{_lbl_ref} — referência",
-                    marker=dict(color=C_INFO, opacity=0.95,
-                                line=dict(color="rgba(255,255,255,0.12)", width=1)),
-                    width=0.30,
+                    marker=dict(color=C_INFO, opacity=1,
+                                line=dict(color="rgba(186,230,253,0.55)", width=1)),
+                    width=0.28,
                     text=_txt_at, textposition="outside", cliponaxis=False,
-                    textfont=dict(size=_fs_v_comp + 2, color=TXT_HI, family=F_NUM),
+                    textfont=dict(size=_fs_val, color=TXT_HI, family=F_NUM),
                     customdata=cdata, hovertemplate=htmpl))
+
+                # Separador discreto entre a área das barras e a das linhas
+                fig_comp.add_hline(y=_range_val * 0.58, line=dict(
+                    color="rgba(148,180,220,0.10)", width=1, dash="dot"))
+
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
-                    name="Notas — semana passada", mode="lines+markers",
-                    line=dict(color=C_NEUT, width=1.8, dash="dot", shape="spline"),
-                    marker=dict(color=P_NEUT, size=9, line=dict(color="rgba(4,8,15,0.9)", width=1.8)),
+                    name=f"Notas — {_lbl_ant}", mode="lines+markers",
+                    line=dict(color=C_NEUT, width=1.6, dash="dot", shape="spline"),
+                    marker=dict(color=P_NEUT, size=9, symbol="circle-open",
+                                line=dict(color=P_NEUT, width=2)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
-                    name="Notas — referência", mode="lines+markers",
-                    line=dict(color=C_QTY, width=2.8, shape="spline"),
-                    marker=dict(color=P_QTY, size=11, line=dict(color="rgba(4,8,15,0.9)", width=2)),
+                    name=f"Notas — {_lbl_ref}", mode="lines+markers",
+                    line=dict(color=C_QTY, width=2.6, shape="spline"),
+                    marker=dict(color=P_QTY, size=11,
+                                line=dict(color="rgba(4,8,15,0.95)", width=2)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
 
-                _h_comp = max(540, min(n_comp * 66, 820))
-                fig_comp.update_layout(**base_layout(_h_comp, dict(t=70, b=104, l=8, r=12),
+                fig_comp.update_layout(**base_layout(_h_comp, dict(t=_mt, b=_mb, l=8, r=14),
                                                      legenda=True))
                 fig_comp.update_layout(
-                    barmode="group", bargap=0.44, bargroupgap=0.14,
-                    xaxis=eixo_x(df_comp[COL_PLACA], size=_fs_c_comp),
-                    yaxis=eixo_y_oculto(max_val_comp * 1.52),
+                    barmode="group", bargap=0.40, bargroupgap=0.16,
+                    xaxis=eixo_x(df_comp[COL_PLACA], size=_fs_cat),
+                    yaxis=eixo_y_oculto(_range_val),
                     yaxis2=dict(overlaying="y", side="right", showgrid=False, zeroline=False,
-                                showticklabels=False, range=[0, max_qtd_comp * 3.6]),
+                                showticklabels=False, range=[_q_lo, _q_hi]),
                 )
-                # ── Rótulos das duas linhas, posicionados sem colisão ───────
-                _plot_h = _h_comp - 70 - 104
-                _ref_barras = [
-                    [float(va) / (max_val_comp * 1.52) * _plot_h + 20,
-                     float(vs) / (max_val_comp * 1.52) * _plot_h + 20]
-                    for va, vs in zip(df_comp["Valor_Atual"], df_comp["Valor_Semana"])]
-                _fs = (1 / (max_qtd_comp * 3.6)) if max_qtd_comp > 0 else 0
-                _ocup = anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Atual"]),
-                                     ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
-                                     cor=C_QTY, size=_fs_v_comp, gap=34)
-                anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Semana"]),
-                             ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
-                             cor=C_NEUT, size=_fs_v_comp, ocupados=_ocup, gap=34)
+
+                # ── Etiquetas das notas, sempre coladas ao seu ponto ────────
+                # Quando os dois pontos de uma mesma placa ficam próximos, um
+                # sobe e o outro desce — nunca se encavalam nem invadem as barras.
+                def _px(q):
+                    return (float(q) - _q_lo) / (_q_hi - _q_lo) * _plot_h
+
+                for _x, _qa, _qs_ in zip(df_comp[COL_PLACA], df_comp["Qtd_Atual"],
+                                         df_comp["Qtd_Semana"]):
+                    _pa, _pp = _px(_qa), _px(_qs_)
+                    if abs(_pa - _pp) < 34:                 # risco de colisão
+                        _dy_a, _dy_p = (22, -24) if _pa >= _pp else (-24, 22)
+                    else:
+                        _dy_a = 22 if _pa >= _pp else -24
+                        _dy_p = -24 if _pa >= _pp else 22
+                    # nunca deixa a etiqueta sair pelo topo nem cair sobre as barras
+                    if _pa + _dy_a > _plot_h - 12:
+                        _dy_a = -24
+                    if _pp + _dy_p > _plot_h - 12:
+                        _dy_p = -24
+                    if _pa + _dy_a < _plot_h * 0.58:
+                        _dy_a = 22
+                    if _pp + _dy_p < _plot_h * 0.58:
+                        _dy_p = 22
+                    fig_comp.add_annotation(
+                        x=_x, y=_qa, xref="x", yref="y2", yshift=_dy_a, showarrow=False,
+                        text=f"<b>{int(_qa)}</b>",
+                        font=dict(color=C_QTY, size=_fs_qtd, family=F_NUM),
+                        bgcolor=BADGE, borderpad=5, borderwidth=1,
+                        bordercolor="rgba(250,204,21,0.30)")
+                    fig_comp.add_annotation(
+                        x=_x, y=_qs_, xref="x", yref="y2", yshift=_dy_p, showarrow=False,
+                        text=f"<b>{int(_qs_)}</b>",
+                        font=dict(color=P_NEUT, size=_fs_qtd - 1, family=F_NUM),
+                        bgcolor=BADGE, borderpad=5, borderwidth=1,
+                        bordercolor="rgba(148,180,220,0.22)")
 
                 st.plotly_chart(fig_comp, use_container_width=True,
                                 config={"displayModeBar": False}, key="pc_9")
 
-                # ── Rodapé do card ──────────────────────────────────────────
-                _var_cor = C_CRIT if var_pct > 0 else C_OK if var_pct < 0 else C_NEUT
-                _var_seta = "▲" if var_pct > 0 else "▼" if var_pct < 0 else "■"
+                # ── DESTAQUES: leitura em 2 segundos ────────────────────────
+                # Apenas recortes do mesmo df_comp já calculado acima.
+                _top = df_comp.iloc[0]
+                _dif = (df_comp["Valor_Atual"] - df_comp["Valor_Semana"])
+                _i_alta = _dif.idxmax()
+                _alta = df_comp.loc[_i_alta]
+                _novas = int((df_comp["Valor_Semana"] == 0).sum())
+                _nt_at, _nt_sm = int(df_comp["Qtd_Atual"].sum()), int(df_comp["Qtd_Semana"].sum())
+
                 st.markdown(f"""
                 <div class="cc-foot">
                   <div class="cc-foot-i">
-                    <span class="cc-foot-lab"><i class="d" style="background:#38bdf8;"></i>{_lbl_ref} — referência</span>
-                    <span class="cc-foot-val" style="color:#38bdf8;">{fmt_brl0(total_atual)}</span>
+                    <span class="cc-foot-lab"><i class="d" style="background:{C_CRIT};"></i>Maior valor</span>
+                    <span class="cc-foot-val" style="color:{TXT_HI};">{fmt_brl0(_top['Valor_Atual'])}</span>
+                    <span class="cc-mini-sub">{_top[COL_PLACA]} · {int(_top['Qtd_Atual'])} notas</span>
                   </div>
                   <div class="cc-foot-sep"></div>
                   <div class="cc-foot-i">
-                    <span class="cc-foot-lab"><i class="d" style="background:#8fa3bb;"></i>{_lbl_ant} — semana passada</span>
-                    <span class="cc-foot-val" style="color:#cbd5e1;">{fmt_brl0(total_semana)}</span>
+                    <span class="cc-foot-lab"><i class="d" style="background:{C_WARN};"></i>Maior alta</span>
+                    <span class="cc-foot-val" style="color:{TXT_HI};">{fmt_brl0(_dif.loc[_i_alta])}</span>
+                    <span class="cc-mini-sub">{_alta[COL_PLACA]} · vs {_lbl_ant}</span>
                   </div>
                   <div class="cc-foot-sep"></div>
                   <div class="cc-foot-i">
-                    <span class="cc-foot-lab">Variação</span>
-                    <span class="cc-foot-val" style="color:{_var_cor};">{_var_seta} {var_pct:+.1f}%</span>
+                    <span class="cc-foot-lab"><i class="d" style="background:{C_QTY};"></i>Notas</span>
+                    <span class="cc-foot-val" style="color:{C_QTY};">{_nt_at}</span>
+                    <span class="cc-mini-sub">contra {_nt_sm} em {_lbl_ant}</span>
+                  </div>
+                  <div class="cc-foot-sep"></div>
+                  <div class="cc-foot-i">
+                    <span class="cc-foot-lab"><i class="d" style="background:{C_INFO};"></i>Sem base anterior</span>
+                    <span class="cc-foot-val" style="color:{C_INFO};">{_novas}</span>
+                    <span class="cc-mini-sub">de {n_comp} placas em {_lbl_ref}</span>
                   </div>
                 </div>
                 """, unsafe_allow_html=True)
