@@ -387,6 +387,126 @@ HOVER = dict(bgcolor="rgba(6,10,18,0.97)", bordercolor="rgba(56,189,248,0.28)",
              font=dict(color="#e8f2ff", family="Inter", size=13), align="left")
 
 # ═════════════════════════════════════════════════════════════════════════════
+# EXPORTAÇÃO — Excel já formatado como tabela (e CSV como alternativa)
+# ═════════════════════════════════════════════════════════════════════════════
+# O conteúdo exportado é exatamente o que está na tela, com os mesmos filtros.
+# A conversão abaixo só devolve aos números o formato numérico (o app mostra
+# "R$ 1.234,56" como texto), para que a planilha permita somar e ordenar.
+_RE_MOEDA = r"^R\$\s?-?[\d.]+,\d{2}$"
+_RE_PCT = r"^-?[\d.]+,?\d*%$"
+
+
+def _coluna_numerica(serie, padrao):
+    vals = serie.astype(str).str.strip()
+    nao_vazias = vals[vals != ""]
+    if len(nao_vazias) == 0:
+        return False
+    return bool(nao_vazias.str.match(padrao).all())
+
+
+def to_xlsx(df_exp, sheet_name="Dados"):
+    """Gera um .xlsx com tabela nomeada, filtro, cabeçalho fixo e larguras.
+
+    Devolve None se o openpyxl não estiver disponível no ambiente, para o app
+    seguir funcionando apenas com o CSV.
+    """
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+        from openpyxl.worksheet.table import Table, TableStyleInfo
+    except Exception:
+        return None
+
+    df_x = df_exp.copy()
+    df_x.columns = [str(c) for c in df_x.columns]
+    formatos = {}
+
+    for col in df_x.columns:
+        # is_numeric_dtype cobre pandas 2 (object) e pandas 3 (dtype str)
+        if not pd.api.types.is_numeric_dtype(df_x[col]):
+            if _coluna_numerica(df_x[col], _RE_MOEDA):
+                df_x[col] = (df_x[col].astype(str).str.replace("R$", "", regex=False)
+                             .str.strip().str.replace(".", "", regex=False)
+                             .str.replace(",", ".", regex=False))
+                df_x[col] = pd.to_numeric(df_x[col], errors="coerce")
+                formatos[col] = 'R$ #,##0.00'
+            elif _coluna_numerica(df_x[col], _RE_PCT):
+                df_x[col] = (df_x[col].astype(str).str.replace("%", "", regex=False)
+                             .str.replace(".", "", regex=False)
+                             .str.replace(",", ".", regex=False))
+                df_x[col] = pd.to_numeric(df_x[col], errors="coerce") / 100
+                formatos[col] = '0.0%'
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name[:31] or "Dados"
+
+    cab_fill = PatternFill("solid", fgColor="0F2135")
+    cab_font = Font(color="E8F2FF", bold=True, size=11, name="Calibri")
+    borda = Border(bottom=Side(style="thin", color="2C4763"))
+
+    ws.append(list(df_x.columns))
+    for c in range(1, len(df_x.columns) + 1):
+        cel = ws.cell(row=1, column=c)
+        cel.fill, cel.font, cel.border = cab_fill, cab_font, borda
+        cel.alignment = Alignment(horizontal="left", vertical="center")
+    ws.row_dimensions[1].height = 22
+
+    for _, linha in df_x.iterrows():
+        ws.append([None if pd.isna(v) else v for v in linha.tolist()])
+
+    for i, col in enumerate(df_x.columns, start=1):
+        letra = get_column_letter(i)
+        _larg_dados = df_x[col].astype(str).str.len().max() if len(df_x) else 0
+        if pd.isna(_larg_dados):
+            _larg_dados = 0
+        largura = max(len(str(col)) + 4, int(_larg_dados) + 3)
+        ws.column_dimensions[letra].width = min(max(largura, 10), 48)
+        if col in formatos:
+            for r in range(2, len(df_x) + 2):
+                ws.cell(row=r, column=i).number_format = formatos[col]
+
+    if len(df_x) > 0:
+        ref = f"A1:{get_column_letter(len(df_x.columns))}{len(df_x) + 1}"
+        tab = Table(displayName="Tabela1", ref=ref)
+        tab.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
+        ws.add_table(tab)
+    ws.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def export_tabela(df_exp, nome_base, key, sheet_name="Dados", largura_total=False):
+    """Renderiza os botões de exportação: Excel (tabela pronta) e CSV."""
+    if df_exp is None or len(df_exp) == 0:
+        return
+    stamp = datetime.now().strftime("%Y%m%d_%H%M")
+    xlsx = to_xlsx(df_exp, sheet_name)
+    csv = df_exp.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
+
+    if xlsx is None:
+        st.download_button("Exportar CSV", data=csv, file_name=f"{nome_base}_{stamp}.csv",
+                           mime="text/csv", key=f"{key}_csv",
+                           use_container_width=largura_total)
+        st.caption("Para exportar em Excel, adicione `openpyxl` ao requirements.txt.")
+        return
+
+    b1, b2 = st.columns(2, gap="small")
+    with b1:
+        st.download_button(
+            "Exportar tabela (Excel)", data=xlsx,
+            file_name=f"{nome_base}_{stamp}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"{key}_xlsx", use_container_width=True)
+    with b2:
+        st.download_button("Exportar CSV", data=csv, file_name=f"{nome_base}_{stamp}.csv",
+                           mime="text/csv", key=f"{key}_csv", use_container_width=True)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # DESIGN TOKENS DOS GRÁFICOS — identidade única para todo o sistema
 # ═════════════════════════════════════════════════════════════════════════════
 # Tipografia: Inter para rótulos e categorias, JetBrains Mono para números.
@@ -1366,11 +1486,8 @@ if pagina == "Dashboard":
 
             _suf = dt_sel.strftime("%Y%m%d") if (usar_data and dt_sel) else "todos"
             st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-            st.download_button(
-                "Exportar lista de pedidos (CSV)",
-                data=df_ped_view.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-                file_name=f"pedidos_devolvidos_{_suf}.csv",
-                mime="text/csv", key="dl_pedidos")
+            export_tabela(df_ped_view, f"pedidos_devolvidos_{_suf}", "dl_pedidos",
+                          sheet_name="Pedidos devolvidos")
     panel_close()
 
     # ── ÁREA 1 — gráficos por placa (empilhados, largura total) ─────────────
@@ -1699,8 +1816,13 @@ if pagina == "Dashboard":
                 max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
                 max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
 
-                _fs_v_comp = 14 if n_comp <= 14 else 12 if n_comp <= 22 else 11
-                _fs_c_comp = 13 if n_comp <= 14 else 11 if n_comp <= 26 else 10
+                # Números do comparativo: legibilidade tem prioridade sobre a
+                # densidade — mesmo com muitas placas o valor continua grande.
+                _fs_v_comp = 19 if n_comp <= 10 else 17 if n_comp <= 16 else 15
+                _fs_c_comp = 15 if n_comp <= 10 else 14 if n_comp <= 18 else 12
+                # Rótulo em branco só onde há valor: barra zerada polui a leitura.
+                _txt_at = [fmt_brl0(v) if v > 0 else "" for v in df_comp["Valor_Atual"]]
+                _txt_sm = [fmt_brl0(v) if v > 0 else "" for v in df_comp["Valor_Semana"]]
 
                 fig_comp = go.Figure()
                 # Série histórica em cinza neutro, série de referência em azul:
@@ -1711,8 +1833,7 @@ if pagina == "Dashboard":
                     marker=dict(color="rgba(143,163,187,0.38)", opacity=1,
                                 line=dict(color="rgba(203,213,225,0.35)", width=1)),
                     width=0.30,
-                    text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]], textposition="outside",
-                    cliponaxis=False,
+                    text=_txt_sm, textposition="outside", cliponaxis=False,
                     textfont=dict(size=_fs_v_comp, color=P_NEUT, family=F_NUM),
                     customdata=cdata, hovertemplate=htmpl))
                 fig_comp.add_trace(go.Bar(
@@ -1721,25 +1842,24 @@ if pagina == "Dashboard":
                     marker=dict(color=C_INFO, opacity=0.95,
                                 line=dict(color="rgba(255,255,255,0.12)", width=1)),
                     width=0.30,
-                    text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]], textposition="outside",
-                    cliponaxis=False,
-                    textfont=dict(size=_fs_v_comp + 1, color=TXT_HI, family=F_NUM),
+                    text=_txt_at, textposition="outside", cliponaxis=False,
+                    textfont=dict(size=_fs_v_comp + 2, color=TXT_HI, family=F_NUM),
                     customdata=cdata, hovertemplate=htmpl))
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
                     name="Notas — semana passada", mode="lines+markers",
                     line=dict(color=C_NEUT, width=1.8, dash="dot", shape="spline"),
-                    marker=dict(color=P_NEUT, size=7, line=dict(color="rgba(4,8,15,0.9)", width=1.5)),
+                    marker=dict(color=P_NEUT, size=9, line=dict(color="rgba(4,8,15,0.9)", width=1.8)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
                     name="Notas — referência", mode="lines+markers",
-                    line=dict(color=C_QTY, width=2.4, shape="spline"),
-                    marker=dict(color=P_QTY, size=9, line=dict(color="rgba(4,8,15,0.9)", width=1.5)),
+                    line=dict(color=C_QTY, width=2.8, shape="spline"),
+                    marker=dict(color=P_QTY, size=11, line=dict(color="rgba(4,8,15,0.9)", width=2)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
 
-                _h_comp = max(470, min(n_comp * 58, 720))
-                fig_comp.update_layout(**base_layout(_h_comp, dict(t=60, b=90, l=8, r=10),
+                _h_comp = max(540, min(n_comp * 66, 820))
+                fig_comp.update_layout(**base_layout(_h_comp, dict(t=70, b=104, l=8, r=12),
                                                      legenda=True))
                 fig_comp.update_layout(
                     barmode="group", bargap=0.44, bargroupgap=0.14,
@@ -1749,7 +1869,7 @@ if pagina == "Dashboard":
                                 showticklabels=False, range=[0, max_qtd_comp * 3.6]),
                 )
                 # ── Rótulos das duas linhas, posicionados sem colisão ───────
-                _plot_h = _h_comp - 60 - 90
+                _plot_h = _h_comp - 70 - 104
                 _ref_barras = [
                     [float(va) / (max_val_comp * 1.52) * _plot_h + 20,
                      float(vs) / (max_val_comp * 1.52) * _plot_h + 20]
@@ -1757,10 +1877,10 @@ if pagina == "Dashboard":
                 _fs = (1 / (max_qtd_comp * 3.6)) if max_qtd_comp > 0 else 0
                 _ocup = anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Atual"]),
                                      ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
-                                     cor=C_QTY, size=_fs_v_comp, gap=28)
+                                     cor=C_QTY, size=_fs_v_comp, gap=34)
                 anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Semana"]),
                              ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
-                             cor=C_NEUT, size=_fs_v_comp, ocupados=_ocup, gap=28)
+                             cor=C_NEUT, size=_fs_v_comp, ocupados=_ocup, gap=34)
 
                 st.plotly_chart(fig_comp, use_container_width=True,
                                 config={"displayModeBar": False}, key="pc_9")
@@ -1948,10 +2068,8 @@ elif pagina == "Equipe":
             _cols_tm = ["Motorista", "Placas", "Notas", "Valor total", "Ticket médio", "% do total"]
             html_table(tm[[c for c in _cols_tm if c in tm.columns]], min_width=820)
             st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-            st.download_button("Exportar motoristas (CSV)",
-                               data=tm.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-                               file_name=f"motoristas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                               mime="text/csv", key="dl_mot")
+            export_tabela(tm[[c for c in _cols_tm if c in tm.columns]], "motoristas",
+                          "dl_mot", sheet_name="Motoristas")
         else:
             st.info("Sem dados para listar.")
         panel_close()
@@ -1966,10 +2084,8 @@ elif pagina == "Equipe":
             _cols_te = ["Entregador", "Placas", "Notas", "Valor total", "Ticket médio", "% do total"]
             html_table(te[[c for c in _cols_te if c in te.columns]], min_width=820)
             st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-            st.download_button("Exportar entregadores (CSV)",
-                               data=te.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-                               file_name=f"entregadores_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                               mime="text/csv", key="dl_ent")
+            export_tabela(te[[c for c in _cols_te if c in te.columns]], "entregadores",
+                          "dl_ent", sheet_name="Entregadores")
         else:
             st.info("Sem dados para listar.")
         panel_close()
@@ -1978,6 +2094,8 @@ elif pagina == "Equipe":
     if df_nomes_norm is not None and not df_nomes_norm.empty:
         _tb_nomes = df_nomes_norm.drop(columns=[c for c in ["_PLACA_KEY"] if c in df_nomes_norm.columns])
         html_table(_tb_nomes, min_width=760)
+        st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+        export_tabela(_tb_nomes, "cadastro_nomes", "dl_nomes", sheet_name="NOMES")
         if placas_sem_cadastro:
             st.caption(f"Placas presentes nas devoluções e ausentes no cadastro "
                        f"({len(placas_sem_cadastro)}): {', '.join(placas_sem_cadastro[:25])}"
@@ -2334,11 +2452,8 @@ elif pagina == "Detalhes Reentregas":
             html_table(df_det, min_width=1400)
             if len(df_det) > 500:
                 st.caption(f"Exibindo as primeiras 500 de {len(df_det)} linhas.")
-            csv_det = df_det.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
             st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-            st.download_button("Exportar CSV", data=csv_det,
-                               file_name=f"reentregas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                               mime="text/csv")
+            export_tabela(df_det, "reentregas", "dl_det", sheet_name="Reentregas")
         panel_close()
 
         with st.expander("Diagnóstico — colunas da planilha de reentregas"):
@@ -2406,10 +2521,8 @@ elif pagina == "Campos":
         html_table(df_campos, min_width=1300)
         if len(df_campos) > 500:
             st.caption(f"Exibindo as primeiras 500 de {len(df_campos)} linhas.")
-        csv_c = df_campos.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
         st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-        st.download_button("Exportar CSV", data=csv_c,
-                           file_name=f"campos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", mime="text/csv")
+        export_tabela(df_campos, "campos_devolucoes", "dl_campos", sheet_name="Campos")
     panel_close()
 
 
@@ -2443,12 +2556,9 @@ elif pagina == "Dados Completos":
     html_table(disp, min_width=1200)
     st.caption(f"Exibindo {min(len(disp), 500)} de {len(df)} registros.")
     st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-    e1, e2 = st.columns(2)
+    e1, e2 = st.columns([2, 1])
     with e1:
-        csv_all = df[display_cols].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
-        st.download_button("Exportar filtrados (CSV)", data=csv_all,
-                           file_name=f"devolucoes_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                           mime="text/csv", use_container_width=True)
+        export_tabela(df[display_cols], "devolucoes", "dl_completos", sheet_name="Devoluções")
     with e2:
         if st.button("Atualizar dados", use_container_width=True, type="primary", key="btn_upd_dados"):
             st.cache_data.clear()
@@ -2500,7 +2610,10 @@ elif pagina == "Clientes":
         tb["% do total"] = (tb["Valor"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
         tb["Ticket médio"] = (tb["Valor"] / tb["Qtd"]).apply(fmt_brl)
         tb = tb.rename(columns={COL_CLIENTE: "Cliente", "Qtd": "Notas"})
-        html_table(tb[["Cliente", "Notas", "Valor total", "Ticket médio", "% do total"]], min_width=760)
+        _tb_cli = tb[["Cliente", "Notas", "Valor total", "Ticket médio", "% do total"]]
+        html_table(_tb_cli, min_width=760)
+        st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+        export_tabela(_tb_cli, "clientes", "dl_cli", sheet_name="Clientes")
         panel_close()
 
 
@@ -2551,7 +2664,10 @@ elif pagina == "Motivos":
             tbm["Valor total"] = tbm["Valor"].apply(fmt_brl)
             tbm["% do total"] = (tbm["Valor"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
             tbm = tbm.rename(columns={COL_MOTIVO: "Motivo", "Qtd": "Ocorrências"})
-            html_table(tbm[["Motivo", "Ocorrências", "Valor total", "% do total"]], min_width=620)
+            _tb_mot = tbm[["Motivo", "Ocorrências", "Valor total", "% do total"]]
+            html_table(_tb_mot, min_width=620)
+            st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+            export_tabela(_tb_mot, "motivos", "dl_motivos", sheet_name="Motivos")
             panel_close()
 
 
@@ -2607,8 +2723,11 @@ elif pagina == "Veículos":
             tbv["Ticket médio"] = (tbv["Valor"] / tbv["Qtd"]).apply(fmt_brl)
             tbv["% do total"] = (tbv["Valor"] / total_val * 100).round(1).astype(str) + "%" if total_val > 0 else "0%"
             tbv = tbv.rename(columns={COL_PLACA: "Placa", "Qtd": "Notas"})
-            html_table(tbv[["Placa", "Motorista", "Entregador", "Notas", "Valor total",
-                            "Ticket médio", "% do total"]], min_width=980)
+            _tb_vei = tbv[["Placa", "Motorista", "Entregador", "Notas", "Valor total",
+                           "Ticket médio", "% do total"]]
+            html_table(_tb_vei, min_width=980)
+            st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+            export_tabela(_tb_vei, "veiculos", "dl_veic", sheet_name="Veículos")
             panel_close()
 
 
@@ -2625,42 +2744,48 @@ elif pagina == "Relatórios":
         + kpi("🚚", "Veículos únicos", f"{total_placas}", "No filtro atual", "#fb923c")
         + '</div>', unsafe_allow_html=True)
 
-    panel_open("Exportações", tag="CSV separado por ponto e vírgula", icon="📤")
+    panel_open("Exportações", tag="Excel formatado como tabela", icon="📤")
     st.markdown('<p style="font-size:0.82rem;color:#7c8ea8;margin-bottom:14px;">'
-                'Os arquivos respeitam os filtros aplicados no topo da página.</p>', unsafe_allow_html=True)
-    r1, r2, r3, r4 = st.columns(4, gap="medium")
+                'Os arquivos respeitam os filtros aplicados no topo da página. O Excel já sai como '
+                'tabela: cabeçalho fixo, filtro em cada coluna, valores em formato de moeda e '
+                'larguras ajustadas.</p>', unsafe_allow_html=True)
     display_cols_rel = [c for c in actual_cols if not c.startswith("_")]
     display_cols_rel = display_cols_rel + [c for c in [COL_MOT_NOME, COL_ENT_NOME]
                                            if c not in display_cols_rel]
+
+    r1, r2 = st.columns(2, gap="large")
     with r1:
-        st.download_button("Devoluções filtradas",
-                           data=df[display_cols_rel].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-                           file_name=f"devolucoes_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                           mime="text/csv", use_container_width=True)
-    with r2:
+        st.markdown('<p style="font-size:0.78rem;color:#c3d0e0;font-weight:600;'
+                    'margin:0 0 6px;">Devoluções filtradas</p>', unsafe_allow_html=True)
+        export_tabela(df[display_cols_rel], "devolucoes", "rel_dev", sheet_name="Devoluções")
+
+        st.markdown('<p style="font-size:0.78rem;color:#c3d0e0;font-weight:600;'
+                    'margin:16px 0 6px;">Resumo por motivo</p>', unsafe_allow_html=True)
         if COL_MOTIVO:
             _rm = (df.groupby(COL_MOTIVO).agg(Qtd=(VALOR_COL, "count"), Valor=(VALOR_COL, "sum"))
                    .reset_index().sort_values("Valor", ascending=False))
-            st.download_button("Resumo por motivo",
-                               data=_rm.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-                               file_name=f"resumo_motivos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                               mime="text/csv", use_container_width=True)
-    with r3:
+            _rm_x = _rm.rename(columns={COL_MOTIVO: "Motivo", "Qtd": "Ocorrências"})
+            _rm_x["Valor"] = _rm_x["Valor"].apply(fmt_brl)
+            export_tabela(_rm_x, "resumo_motivos", "rel_mot", sheet_name="Motivos")
+        else:
+            st.caption("Coluna de motivo indisponível.")
+
+    with r2:
+        st.markdown('<p style="font-size:0.78rem;color:#c3d0e0;font-weight:600;'
+                    'margin:0 0 6px;">Resumo por motorista</p>', unsafe_allow_html=True)
         _re = agrupa_equipe(df, COL_MOT_NOME)
         if not _re.empty:
-            st.download_button("Resumo por motorista",
-                               data=_re.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-                               file_name=f"resumo_motoristas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                               mime="text/csv", use_container_width=True)
+            _re_x = _re.rename(columns={COL_MOT_NOME: "Motorista", "Qtd": "Notas"})
+            _re_x["Valor"] = _re_x["Valor"].apply(fmt_brl)
+            export_tabela(_re_x, "resumo_motoristas", "rel_mtr", sheet_name="Motoristas")
         else:
             st.caption("Sem motoristas vinculados.")
-    with r4:
+
+        st.markdown('<p style="font-size:0.78rem;color:#c3d0e0;font-weight:600;'
+                    'margin:16px 0 6px;">Reentregas completas</p>', unsafe_allow_html=True)
         if df_reent is not None and len(df_reent) > 0:
             _cols_r = [c for c in df_reent.columns if not c.startswith("_")]
-            st.download_button("Reentregas completas",
-                               data=df_reent[_cols_r].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-                               file_name=f"reentregas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                               mime="text/csv", use_container_width=True)
+            export_tabela(df_reent[_cols_r], "reentregas", "rel_reent", sheet_name="Reentregas")
         else:
             st.caption("Reentregas indisponíveis no momento.")
     panel_close()
@@ -2685,7 +2810,10 @@ elif pagina == "Relatórios":
         linhas.append({"Dimensão": "Motorista", "Item": r[COL_MOT_NOME], "Qtd": r["Qtd"],
                        "Valor": fmt_brl(r["Valor"])})
     if linhas:
-        html_table(pd.DataFrame(linhas), min_width=560)
+        _df_res = pd.DataFrame(linhas)
+        html_table(_df_res, min_width=560)
+        st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+        export_tabela(_df_res, "resumo_consolidado", "rel_res", sheet_name="Resumo")
     else:
         st.info("Nada a resumir com os filtros atuais.")
     panel_close()
