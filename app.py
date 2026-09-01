@@ -166,9 +166,12 @@ section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked)
 .tb-ur{font-size:0.62rem;color:var(--txt-3);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
 
 /* ── Painéis / cards ─────────────────────────────────────────────────────── */
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
-  padding:22px 24px 12px;backdrop-filter:blur(16px);
-  box-shadow:0 8px 34px rgba(0,0,0,0.3);margin-bottom:18px;}
+.panel{background:linear-gradient(158deg,rgba(15,24,42,0.72),rgba(8,13,25,0.66));
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:22px 24px 16px;backdrop-filter:blur(16px);
+  box-shadow:0 14px 46px rgba(0,0,0,0.38),inset 0 1px 0 rgba(255,255,255,0.03);
+  margin-bottom:18px;}
+.panel .js-plotly-plot{margin-top:2px;}
 .panel-h{display:flex;align-items:center;justify-content:space-between;gap:14px;
   margin-bottom:14px;}
 .panel-t{display:flex;align-items:center;gap:11px;}
@@ -199,10 +202,10 @@ section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked)
 .kpi-up{color:#fecaca;background:rgba(248,113,113,0.14);border:1px solid rgba(248,113,113,0.28);}
 .kpi-down{color:#bbf7d0;background:rgba(52,211,153,0.13);border:1px solid rgba(52,211,153,0.28);}
 .kpi-flat{color:var(--txt-2);background:rgba(255,255,255,0.04);border:1px solid var(--line);}
-.kpi-val{font-family:'JetBrains Mono',monospace;font-size:1.62rem;font-weight:700;
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:1.92rem;font-weight:700;
   color:var(--acc,var(--cyan));line-height:1.05;letter-spacing:-0.02em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.kpi-lab{font-size:0.63rem;color:var(--txt-2);font-weight:600;letter-spacing:.13em;
+.kpi-lab{font-size:0.66rem;color:var(--txt-1);font-weight:700;letter-spacing:.14em;
   text-transform:uppercase;margin:9px 0 4px;}
 .kpi-sub{font-size:0.66rem;color:var(--txt-3);}
 
@@ -339,7 +342,8 @@ hr{border-color:var(--line)!important;margin:20px 0!important;}
 }
 
 /* ── Responsivo ──────────────────────────────────────────────────────────── */
-@media (max-width:1500px){ .kpi-val{font-size:1.42rem;} }
+@media (max-width:1500px){ .kpi-val{font-size:1.62rem;} }
+@media (max-width:1200px){ .kpi-val{font-size:1.44rem;} }
 @media (max-width:1200px){
   .kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   .main .block-container{padding-left:1.2rem!important;padding-right:1.2rem!important;}
@@ -379,42 +383,98 @@ def fmt_brl0(v):
         return "R$ 0"
 
 
-HOVER = dict(bgcolor="rgba(8,14,28,0.96)", bordercolor="rgba(56,189,248,0.35)",
-             font=dict(color="#e8f4ff", family="Inter", size=12))
+HOVER = dict(bgcolor="rgba(6,10,18,0.97)", bordercolor="rgba(56,189,248,0.28)",
+             font=dict(color="#e8f2ff", family="Inter", size=13), align="left")
 
-GRID = "rgba(120,170,225,0.07)"
+# ═════════════════════════════════════════════════════════════════════════════
+# DESIGN TOKENS DOS GRÁFICOS — identidade única para todo o sistema
+# ═════════════════════════════════════════════════════════════════════════════
+# Tipografia: Inter para rótulos e categorias, JetBrains Mono para números.
+F_TXT = "Inter"
+F_NUM = "JetBrains Mono"
 
+# Linguagem de cor por SIGNIFICADO (nunca por gráfico):
+#   crítico/alto volume → vermelho · intermediário → laranja
+#   quantidade/indicador → amarelo · baixo volume/informativo → azul
+#   positivo/concluído → verde · neutro → cinza
+C_CRIT = "#ef4444"     # vermelho — atenção, alto volume
+C_WARN = "#f97316"     # laranja  — intermediário
+C_QTY = "#facc15"      # amarelo  — quantidade / indicador (linhas)
+C_INFO = "#38bdf8"     # azul     — baixo volume, informativo
+C_OK = "#22c55e"       # verde    — positivo, concluído
+C_NEUT = "#8fa3bb"     # cinza    — neutro, comparação histórica
+C_BASE = C_INFO
 
-def plotly_dark(fig, height=None, margin_b=40):
-    u = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-             font=dict(color="#b9c8dc", family="Inter"), coloraxis_showscale=False,
-             margin=dict(t=18, b=margin_b, l=8, r=12),
-             hoverlabel=HOVER,
-             xaxis=dict(showticklabels=False, gridcolor=GRID,
-                        linecolor="rgba(120,170,225,0.10)", zeroline=False),
-             yaxis=dict(showticklabels=False, gridcolor=GRID,
-                        linecolor="rgba(120,170,225,0.10)", zeroline=False),
-             legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
-                         font=dict(color="#b9c8dc", size=13),
-                         orientation="h", x=0, xanchor="left", y=1.08))
-    if height:
-        u["height"] = height
-    fig.update_layout(**u)
-    return fig
+# Pontos e realces derivados (versões claras, usadas em marcadores)
+P_QTY, P_INFO, P_OK, P_NEUT = "#fde68a", "#bae6fd", "#bbf7d0", "#cbd5e1"
 
+# Superfícies e traços
+TXT_HI = "#f8fafc"     # números principais
+TXT_MID = "#c3d0e0"    # categorias
+TXT_LOW = "#7d90a8"    # apoio
+GRID = "rgba(148,180,220,0.05)"
+AXIS = "rgba(148,180,220,0.15)"
+BADGE = "rgba(4,8,15,0.78)"
 
-BLUE = ["#0c4a6e", "#0369a1", "#0ea5e9", "#7dd3fc", "#bae6fd"]
-RED = ["#7f1d1d", "#b91c1c", "#ef4444", "#fca5a5"]
-GREEN = ["#14532d", "#15803d", "#22c55e", "#86efac", "#bbf7d0"]
-MIXED = ["#22d3ee", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#f472b6", "#2dd4bf", "#fb923c"]
-VIOLET = ["#2e1065", "#5b21b6", "#8b5cf6", "#c4b5fd", "#ede9fe"]
-
-C_CRIT, C_WARN, C_BASE, C_OK = "#f87171", "#fb923c", "#38bdf8", "#34d399"
+# Escalas contínuas mantidas por compatibilidade com as chamadas existentes.
+BLUE = ["#0b3a5c", "#0d7fb8", "#38bdf8", "#a5dcf8"]
+RED = ["#5c1414", "#b91c1c", "#ef4444", "#fca5a5"]
+GREEN = ["#0f3d24", "#15803d", "#22c55e", "#a7f3c4"]
+MIXED = [C_CRIT, C_WARN, C_QTY, C_INFO, C_OK, C_NEUT, "#22d3ee", "#fb923c"]
+VIOLET = ["#312150", "#6d3fc0", "#a78bfa", "#ddd2fb"]
 
 
 def ramp(n, top=5, mid=10, base=C_BASE):
-    """Escala de cor por criticidade (mesma lógica de destaque do layout original)."""
+    """Cor por criticidade: os primeiros colocados sempre em vermelho/laranja."""
     return [C_CRIT if i < top else C_WARN if i < mid else base for i in range(n)]
+
+
+def trunc(v, n=26):
+    """Encurta rótulos longos preservando a leitura (o nome cheio fica no hover)."""
+    s = str(v)
+    return s if len(s) <= n else s[: n - 1] + "…"
+
+
+def eixo_x(labels, size=13, angle=-38):
+    """Eixo X técnico: rótulos encurtados, sem grade, linha de base discreta."""
+    return dict(
+        tickmode="array", tickvals=list(labels), ticktext=[trunc(v, 22) for v in labels],
+        tickfont=dict(color=TXT_MID, size=size, family=F_NUM),
+        gridcolor="rgba(0,0,0,0)", linecolor=AXIS, zeroline=False,
+        tickangle=angle, automargin=True, ticks="outside", ticklen=4, tickcolor=AXIS)
+
+
+def eixo_y_oculto(topo=None):
+    """Eixo Y sem escala lateral — os valores ficam nos próprios elementos."""
+    d = dict(showticklabels=False, gridcolor=GRID, zeroline=False, linecolor="rgba(0,0,0,0)")
+    if topo:
+        d["range"] = [0, topo]
+    return d
+
+
+def base_layout(height, margin, legenda=False):
+    """Camada comum a todos os gráficos: fundo transparente sobre o grafite do painel."""
+    lay = dict(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=TXT_MID, family=F_TXT, size=13),
+        height=height, margin=margin, separators=",.",
+        hoverlabel=HOVER, hovermode="closest", coloraxis_showscale=False,
+        showlegend=legenda,
+    )
+    if legenda:
+        lay["legend"] = dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
+                             font=dict(color=TXT_MID, size=13, family=F_TXT),
+                             orientation="h", x=0, xanchor="left", y=1.10,
+                             itemsizing="constant", itemwidth=40, tracegroupgap=20)
+    return lay
+
+
+def plotly_dark(fig, height=None, margin_b=40):
+    """Compatibilidade: aplica a base do sistema a figuras criadas fora dos helpers."""
+    fig.update_layout(**base_layout(height or 360, dict(t=16, b=margin_b, l=8, r=12)))
+    fig.update_xaxes(showticklabels=False, gridcolor=GRID, zeroline=False, linecolor=AXIS)
+    fig.update_yaxes(showticklabels=False, gridcolor=GRID, zeroline=False, linecolor=AXIS)
+    return fig
 
 
 def panel_open(title, tag=None, icon=""):
@@ -926,16 +986,13 @@ def anotar_linha(fig, xs, ys, ref_pxs, plot_h, frac_scale, cor, size,
     ocupados : lista acumulada de (x, px) de rótulos já posicionados, para que
                séries diferentes no mesmo gráfico também não se sobreponham.
 
-    Nada aqui altera os dados — apenas escolhe acima/abaixo e o deslocamento.
+    Cada número recebe uma etiqueta escura semitransparente, para nunca se
+    confundir com a barra, a linha ou o fundo. Nada aqui altera os dados.
     """
     if ocupados is None:
         ocupados = []
-    # Candidatos ordenados do mais próximo do ponto para o mais distante.
-    # Cada item é (deslocamento vertical, deslocamento horizontal) em pixels:
-    # primeiro acima, depois abaixo, depois deslocando para os lados e só então
-    # afastando na vertical — assim o número nunca perde o vínculo com o ponto.
-    CANDIDATOS = [(24, 0), (-26, 0), (24, 30), (24, -30), (-26, 30), (-26, -30),
-                  (40, 0), (-42, 0), (56, 0), (72, 0), (88, 0)]
+    CANDIDATOS = [(26, 0), (-28, 0), (26, 30), (26, -30), (-28, 30), (-28, -30),
+                  (42, 0), (-44, 0), (58, 0), (74, 0), (90, 0)]
     for i, (x, y) in enumerate(zip(xs, ys)):
         ponto_px = float(y) * frac_scale * plot_h
         conflitos = [px for xx, px, dx in ocupados if xx == x]
@@ -945,7 +1002,7 @@ def anotar_linha(fig, xs, ys, ref_pxs, plot_h, frac_scale, cor, size,
         dy, dx = CANDIDATOS[0]
         for cy, cx in CANDIDATOS:
             alvo = ponto_px + cy
-            if alvo < 12 or alvo > plot_h - 14:      # respeita as bordas do gráfico
+            if alvo < 14 or alvo > plot_h - 16:      # respeita as bordas do gráfico
                 continue
             livre = all(abs(alvo - c) >= gap or cx != 0 for c in conflitos)
             livre = livre and all(abs(alvo - px) >= gap or cx != ddx
@@ -958,25 +1015,22 @@ def anotar_linha(fig, xs, ys, ref_pxs, plot_h, frac_scale, cor, size,
         fig.add_annotation(
             x=x, y=y, xref="x", yref=yaxis, text=fmt(y), showarrow=False,
             yshift=dy, xshift=dx,
-            font=dict(color=cor, size=size, family="JetBrains Mono"),
-            bgcolor="rgba(6,11,22,0.62)", borderpad=3, bordercolor="rgba(0,0,0,0)",
+            font=dict(color=cor, size=size, family=F_NUM),
+            bgcolor=BADGE, borderpad=4, bordercolor="rgba(148,180,220,0.16)",
+            borderwidth=1, opacity=0.98,
         )
     return ocupados
 
 
 def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_colors=None,
-                     linha_nome="Quantidade (notas)", linha_cor="#fbbf24",
-                     linha_ponto="#fde68a", linha_texto="#fcd34d", linha_rotulo="Notas",
+                     linha_nome="Quantidade (notas)", linha_cor=C_QTY,
+                     linha_ponto=P_QTY, linha_texto=C_QTY, linha_rotulo="Notas",
                      customdata=None, extra_hover=""):
-    """Barras = Valor (R$) · Linha = a métrica passada em qtd_col.
+    """Combinado padrão do sistema: barras = valor (R$) · linha = quantidade.
 
-    A cor e o nome da linha são parametrizáveis para permitir dois gráficos
-    irmãos (notas e clientes) sem duplicar código. Nenhum dado é transformado
-    aqui — a função apenas desenha as colunas que recebe.
-
-    customdata / extra_hover permitem anexar informações ao tooltip (por
-    exemplo, o motorista e o entregador vinculados à placa) sem mexer nos
-    valores plotados.
+    Barras sólidas com cor por criticidade, valor em branco negrito acima de
+    cada barra e a linha em amarelo (a cor de quantidade em todo o sistema),
+    com os números em etiquetas escuras que nunca cobrem os valores das barras.
     """
     n = len(df_data)
     if bar_colors is None:
@@ -989,110 +1043,161 @@ def make_combo_chart(df_data, x_col, val_col, qtd_col, title, periodo="", bar_co
     _hb = "<b>%{x}</b>" + extra_hover + "<br>Valor: %{text}<extra></extra>"
     _hl = "<b>%{x}</b>" + extra_hover + "<br>" + linha_rotulo + ": %{y}<extra></extra>"
 
+    # Tamanhos que encolhem conforme a quantidade de categorias, para o texto
+    # nunca invadir a barra vizinha nem sair da área do gráfico.
+    fs_val = 17 if n <= 14 else 15 if n <= 22 else 13
+    fs_lin = 17 if n <= 14 else 15 if n <= 22 else 13
+    fs_cat = 14 if n <= 14 else 12 if n <= 26 else 11
+
     fig.add_trace(go.Bar(
         x=df_data[x_col], y=df_data[val_col], name="Valor (R$)",
-        marker=dict(color=bar_colors, opacity=0.95,
-                    line=dict(color="rgba(255,255,255,0.14)", width=1)),
+        marker=dict(color=bar_colors, opacity=1,
+                    line=dict(color="rgba(255,255,255,0.10)", width=1)),
+        width=0.52,
         text=[fmt_brl0(v) for v in df_data[val_col]],
         textposition="outside", cliponaxis=False,
-        textfont=dict(size=17, color="#f1f6fc", family="JetBrains Mono"),
+        textfont=dict(size=fs_val, color=TXT_HI, family=F_NUM),
         customdata=customdata, hovertemplate=_hb, yaxis="y1",
     ))
+    # Halo suave sob a linha, para separá-la das barras sem virar neon.
     fig.add_trace(go.Scatter(
         x=df_data[x_col], y=df_data[qtd_col], mode="lines", showlegend=False,
-        line=dict(color=linha_cor, width=18, shape="spline"),
-        opacity=0.15, hoverinfo="skip", yaxis="y2",
+        line=dict(color=linha_cor, width=14, shape="spline"),
+        opacity=0.10, hoverinfo="skip", yaxis="y2",
     ))
     fig.add_trace(go.Scatter(
         x=df_data[x_col], y=df_data[qtd_col], name=linha_nome,
         mode="lines+markers",
-        line=dict(color=linha_cor, width=3.4, shape="spline"),
-        marker=dict(color=linha_ponto, size=12, line=dict(color=linha_cor, width=2.5)),
+        line=dict(color=linha_cor, width=2.4, shape="spline"),
+        marker=dict(color=linha_ponto, size=10, line=dict(color=linha_cor, width=2)),
         customdata=customdata, hovertemplate=_hl, yaxis="y2",
     ))
-    h = max(640, min(n * 62, 1020))
+
+    h = max(620, min(n * 60, 1000))
+    mt, mb = 70, 118
+    fig.update_layout(**base_layout(h, dict(t=mt, b=mb, l=8, r=14), legenda=True))
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#b9c8dc", family="Inter"),
-        height=h, margin=dict(t=76, b=118, l=8, r=12),
-        bargroupgap=0.08,
-        hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
-                        font=dict(color="#e8f4ff", family="Inter", size=14), align="left"),
-        title=dict(text=(f"<span style='font-size:14px;color:#7c8ea8'>{periodo}</span>"
+        bargap=0.42, bargroupgap=0.08,
+        title=dict(text=(f"<span style='font-size:13px;color:{TXT_LOW}'>{periodo}</span>"
                          if periodo else ""), x=0.5, xanchor="center", y=0.985),
-        bargap=0.48, separators=",.",
-        xaxis=dict(tickfont=dict(color="#cfe0f2", size=15, family="JetBrains Mono"),
-                   gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.12)",
-                   zeroline=False, tickangle=-38, automargin=True),
-        yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
-                   side="left", range=[0, max_val * 1.45]),
+        xaxis=eixo_x(df_data[x_col], size=fs_cat),
+        yaxis=dict(**eixo_y_oculto(max_val * 1.42), side="left"),
         yaxis2=dict(showticklabels=False, overlaying="y", side="right", showgrid=False,
                     zeroline=False, range=[0, max_qtd * 2.9]),
-        legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
-                    font=dict(color="#b9c8dc", size=15),
-                    orientation="h", x=0, xanchor="left", y=1.08,
-                    itemsizing="constant", itemwidth=44, tracegroupgap=24),
     )
 
     # ── Rótulos da linha: posicionados dinamicamente para não colidir ───────
-    plot_h = h - 76 - 118  # altura útil (altura total menos margens)
-    # Altura aproximada, em px, já ocupada pelo rótulo do valor da barra
-    ref_barra = [float(v) / (max_val * 1.45) * plot_h + 20 if max_val > 0 else 20
+    plot_h = h - mt - mb
+    ref_barra = [float(v) / (max_val * 1.42) * plot_h + 22 if max_val > 0 else 22
                  for v in df_data[val_col]]
     anotar_linha(fig, list(df_data[x_col]), list(df_data[qtd_col]),
                  ref_pxs=ref_barra, plot_h=plot_h,
                  frac_scale=(1 / (max_qtd * 2.9)) if max_qtd > 0 else 0,
-                 cor=linha_texto, size=18, gap=32)
+                 cor=linha_texto, size=fs_lin, gap=32)
     return fig
 
 
 def make_bar_simple(df_data, x_col, y_col, bar_colors, title_txt="", ylabel="Qtd"):
-    """Barras verticais simples (quantidade)."""
+    """Barras verticais de quantidade — valor em branco negrito sobre a barra."""
     n = len(df_data)
+    fs_val = 15 if n <= 14 else 13 if n <= 24 else 11
+    fs_cat = 13 if n <= 14 else 11 if n <= 26 else 10
+    _max = float(df_data[y_col].max()) if n else 1
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df_data[x_col], y=df_data[y_col],
-        marker=dict(color=bar_colors[:n], opacity=0.92,
-                    line=dict(color="rgba(255,255,255,0.06)", width=0.5)),
-        text=[str(v) for v in df_data[y_col]], textposition="outside",
-        textfont=dict(size=12, color="#e8f1fb", family="JetBrains Mono"),
+        marker=dict(color=bar_colors[:n], opacity=1,
+                    line=dict(color="rgba(255,255,255,0.08)", width=1)),
+        width=0.55,
+        text=[f"<b>{v}</b>" for v in df_data[y_col]], textposition="outside",
+        cliponaxis=False,
+        textfont=dict(size=fs_val, color=TXT_HI, family=F_NUM),
         hovertemplate="<b>%{x}</b><br>" + ylabel + ": %{y}<extra></extra>",
     ))
-    h = max(400, min(n * 40, 600))
+    h = max(400, min(n * 42, 620))
+    fig.update_layout(**base_layout(h, dict(t=34 if title_txt else 22, b=96, l=10, r=16)))
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#b9c8dc", family="Inter"),
-        height=h, margin=dict(t=40 if title_txt else 16, b=96, l=10, r=16),
-        hoverlabel=HOVER,
-        title=dict(text=(f"<span style='font-size:12px;color:#7c8ea8'>{title_txt}</span>"
+        bargap=0.42,
+        title=dict(text=(f"<span style='font-size:12px;color:{TXT_LOW}'>{title_txt}</span>"
                          if title_txt else ""), x=0.5, xanchor="center"),
-        bargap=0.48,
-        xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
-                   gridcolor="rgba(0,0,0,0)", linecolor="rgba(120,170,225,0.10)",
-                   zeroline=False, tickangle=-38, automargin=True),
-        yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
-        showlegend=False,
+        xaxis=eixo_x(df_data[x_col], size=fs_cat),
+        yaxis=eixo_y_oculto(_max * 1.22),
     )
     return fig
 
 
-def make_hbar(df_data, x_col, y_col, color_scale, height=400, money=True):
-    fig = px.bar(df_data, x=x_col, y=y_col, orientation="h",
-                 color=x_col, color_continuous_scale=color_scale,
-                 text=[fmt_brl0(v) if money else f"<b>{v}</b>" for v in df_data[x_col]],
-                 labels={y_col: "", x_col: "R$" if money else "Qtd"})
-    fig.update_traces(textposition="outside",
-                      textfont=dict(size=12, color="#cfe0f2", family="JetBrains Mono"),
-                      cliponaxis=False, marker_line_width=0,
-                      hovertemplate="<b>%{y}</b><br>%{x}<extra></extra>")
+def make_hbar(df_data, x_col, y_col, color_scale=None, height=400, money=True):
+    """Ranking horizontal — leitura imediata do primeiro ao último colocado.
+
+    Os dados chegam em ordem crescente (o topo do gráfico é o 1º colocado).
+    A cor segue a mesma linguagem do sistema: os maiores em vermelho/laranja,
+    os demais em azul. `color_scale` é aceito por compatibilidade e ignorado,
+    para que nenhum gráfico invente uma paleta própria.
+    """
+    n = len(df_data)
+    # posição no ranking: 0 = maior valor (última linha do dataframe)
+    pos = list(range(n))[::-1]
+    cores = [C_CRIT if p == 0 else C_WARN if p <= 2 else C_INFO for p in pos]
+
+    fs_val = 15 if n <= 10 else 13
+    fs_cat = 13 if n <= 10 else 12
+    textos = [fmt_brl0(v) if money else f"<b>{int(v)}</b>" for v in df_data[x_col]]
+    # margem à direita proporcional ao maior rótulo, para o número nunca cortar
+    mr = max(76, min(int(max(len(t) for t in textos) * 9.5) + 26, 190))
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df_data[x_col], y=[trunc(v, 30) for v in df_data[y_col]], orientation="h",
+        marker=dict(color=cores, opacity=1,
+                    line=dict(color="rgba(255,255,255,0.08)", width=1)),
+        text=textos, textposition="outside", cliponaxis=False,
+        textfont=dict(size=fs_val, color=TXT_HI, family=F_NUM),
+        customdata=list(df_data[y_col]),
+        hovertemplate="<b>%{customdata}</b><br>%{x}<extra></extra>",
+    ))
+    fig.update_layout(**base_layout(height, dict(t=10, b=24, l=6, r=mr)))
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#b9c8dc", family="Inter"), coloraxis_showscale=False,
-        height=height, margin=dict(t=8, b=26, l=6, r=96), hoverlabel=HOVER,
-        xaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
-        yaxis=dict(tickfont=dict(color="#cfe0f2", size=12, family="Inter"),
-                   gridcolor="rgba(0,0,0,0)", automargin=True),
+        bargap=0.38,
+        xaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
+                   linecolor="rgba(0,0,0,0)",
+                   range=[0, float(df_data[x_col].max()) * 1.18 if n else 1]),
+        yaxis=dict(tickfont=dict(color=TXT_MID, size=fs_cat, family=F_TXT),
+                   gridcolor="rgba(0,0,0,0)", linecolor="rgba(0,0,0,0)",
+                   automargin=True, ticks=""),
     )
+    return fig
+
+
+def make_donut(df_data, name_col, val_col, height=380, money=True, centro_rot="Total"):
+    """Rosca minimalista: percentual dentro da fatia, total no centro.
+
+    Sem legenda lateral — a identificação fica na própria fatia e no hover,
+    seguindo o mesmo padrão de "valor junto ao elemento" dos demais gráficos.
+    """
+    n = len(df_data)
+    cores = [C_CRIT, C_WARN, C_QTY, C_INFO, C_OK, C_NEUT, "#22d3ee", "#fb923c",
+             "#a78bfa", "#f472b6"]
+    total = float(df_data[val_col].sum()) if n else 0
+    txt_centro = fmt_brl0(total) if money else f"{int(total)}"
+
+    fig = go.Figure(go.Pie(
+        labels=[trunc(v, 22) for v in df_data[name_col]],
+        values=df_data[val_col], hole=0.66, sort=False, direction="clockwise",
+        marker=dict(colors=cores[:n] if n <= len(cores) else None,
+                    line=dict(color="rgba(4,8,15,0.95)", width=2)),
+        textinfo="percent", textposition="inside", insidetextorientation="horizontal",
+        textfont=dict(size=13, color="#06101c", family=F_NUM),
+        customdata=list(df_data[name_col]),
+        hovertemplate="<b>%{customdata}</b><br>%{value:,.0f}<br>%{percent}<extra></extra>",
+    ))
+    fig.update_layout(**base_layout(height, dict(t=14, b=14, l=10, r=10)))
+    fig.update_layout(annotations=[dict(
+        text=(f"<span style='font-family:{F_NUM};font-size:19px;color:{TXT_HI}'>"
+              f"<b>{txt_centro}</b></span><br>"
+              f"<span style='font-size:11px;color:{TXT_LOW};letter-spacing:1.5px'>"
+              f"{centro_rot.upper()}</span>"),
+        x=0.5, y=0.5, showarrow=False, align="center")])
     return fig
 
 
@@ -1306,8 +1411,8 @@ if pagina == "Dashboard":
             st.markdown(
                 '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
                 'margin-top:-10px;padding-left:6px;">'
-                '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
-                '<span style="color:#fcd34d;">● Linha: notas devolvidas</span>'
+                '<span style="color:#ef4444;">● Top 5 crítico</span><span style="color:#f97316;">● 6–10 atenção</span><span style="color:#38bdf8;">● Demais</span>'
+                '<span style="color:#facc15;">● Linha: notas devolvidas</span>'
                 '<span style="color:#a78bfa;">Passe o mouse na barra para ver motorista e entregador</span></div>',
                 unsafe_allow_html=True)
         else:
@@ -1327,16 +1432,16 @@ if pagina == "Dashboard":
         st.plotly_chart(
             make_combo_chart(df_motorista, COL_MOT_NOME, "Valor", "Qtd", "", "",
                              ramp(len(df_motorista)),
-                             linha_nome="Notas devolvidas", linha_cor="#fbbf24",
-                             linha_ponto="#fde68a", linha_texto="#fcd34d",
+                             linha_nome="Notas devolvidas", linha_cor=C_QTY,
+                             linha_ponto=P_QTY, linha_texto=C_QTY,
                              linha_rotulo="Notas",
                              customdata=_cd_mot, extra_hover="<br>🚚 %{customdata[0]}"),
             use_container_width=True, key="pc_2")
         st.markdown(
             '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
             'margin-top:-10px;padding-left:6px;">'
-            '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
-            '<span style="color:#fcd34d;">● Linha: notas devolvidas</span>'
+            '<span style="color:#ef4444;">● Top 5 crítico</span><span style="color:#f97316;">● 6–10 atenção</span><span style="color:#38bdf8;">● Demais</span>'
+            '<span style="color:#facc15;">● Linha: notas devolvidas</span>'
             '<span>Vínculo placa → motorista pela aba NOMES</span></div>',
             unsafe_allow_html=True)
     panel_close()
@@ -1352,16 +1457,16 @@ if pagina == "Dashboard":
         st.plotly_chart(
             make_combo_chart(df_entregador, COL_ENT_NOME, "Valor", "Qtd", "", "",
                              ramp(len(df_entregador), 5, 10, "#a78bfa"),
-                             linha_nome="Notas devolvidas", linha_cor="#38bdf8",
-                             linha_ponto="#bae6fd", linha_texto="#7dd3fc",
+                             linha_nome="Notas devolvidas", linha_cor=C_QTY,
+                             linha_ponto=P_QTY, linha_texto=C_QTY,
                              linha_rotulo="Notas",
                              customdata=_cd_ent, extra_hover="<br>🚚 %{customdata[0]}"),
             use_container_width=True, key="pc_3")
         st.markdown(
             '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
             'margin-top:-10px;padding-left:6px;">'
-            '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
-            '<span style="color:#7dd3fc;">● Linha: notas devolvidas</span>'
+            '<span style="color:#ef4444;">● Top 5 crítico</span><span style="color:#f97316;">● 6–10 atenção</span><span style="color:#38bdf8;">● Demais</span>'
+            '<span style="color:#facc15;">● Linha: notas devolvidas</span>'
             '<span>Vínculo placa → entregador pela aba NOMES</span></div>',
             unsafe_allow_html=True)
     panel_close()
@@ -1371,16 +1476,16 @@ if pagina == "Dashboard":
         panel_open("Devoluções por placa — valor e clientes únicos", tag=periodo, icon="👥")
         st.plotly_chart(
             make_combo_chart(df_placa, COL_PLACA, "Valor", "Clientes", "", "", ramp(len(df_placa)),
-                             linha_nome="Clientes por veículo", linha_cor="#34d399",
-                             linha_ponto="#d1fae5", linha_texto="#a7f3d0", linha_rotulo="Clientes",
+                             linha_nome="Clientes por veículo", linha_cor=C_OK,
+                             linha_ponto=P_OK, linha_texto=C_OK, linha_rotulo="Clientes",
                              customdata=df_placa[["Motorista", "Entregador"]].values,
                              extra_hover="<br>🧑‍✈️ %{customdata[0]}<br>📦 %{customdata[1]}"),
             use_container_width=True, key="pc_4")
         st.markdown(
             '<div style="display:flex;gap:24px;flex-wrap:wrap;font-size:0.86rem;color:#7c8ea8;'
             'margin-top:-10px;padding-left:6px;">'
-            '<span>● Top 5 crítico</span><span>● 6–10 atenção</span><span>● Demais</span>'
-            '<span style="color:#6ee7b7;">● Linha: clientes únicos atendidos pelo veículo</span></div>',
+            '<span style="color:#ef4444;">● Top 5 crítico</span><span style="color:#f97316;">● 6–10 atenção</span><span style="color:#38bdf8;">● Demais</span>'
+            '<span style="color:#22c55e;">● Linha: clientes únicos atendidos pelo veículo</span></div>',
             unsafe_allow_html=True)
         panel_close()
 
@@ -1394,35 +1499,34 @@ if pagina == "Dashboard":
         total_mes = df_mes_dia["Acumulado"].iloc[-1] if len(df_mes_dia) > 0 else 0
         valor_hoje = df_mes_dia.loc[df_mes_dia["_DIA"] == hoje, "Valor"].sum()
 
+        _n_ac = len(df_mes_dia)
+        _fs_ac = 14 if _n_ac <= 14 else 12 if _n_ac <= 24 else 11
+        _max_ac = float(df_mes_dia["Acumulado"].max()) if _n_ac else 1
+
         fig_acum = go.Figure()
         fig_acum.add_trace(go.Scatter(
             x=df_mes_dia["_DIA"], y=df_mes_dia["Acumulado"],
             mode="lines+markers+text", fill="tozeroy",
-            line=dict(color="#22d3ee", width=2.4, shape="spline"),
-            marker=dict(color="#a5f3fc", size=7, line=dict(color="#22d3ee", width=2)),
-            fillcolor="rgba(34,211,238,0.10)",
+            line=dict(color=C_INFO, width=2.2, shape="spline"),
+            marker=dict(color=P_INFO, size=8, line=dict(color=C_INFO, width=2)),
+            fillcolor="rgba(56,189,248,0.09)",
             text=[fmt_brl0(v) for v in df_mes_dia["Acumulado"]],
             textposition="top center", cliponaxis=False,
-            textfont=dict(color="#a5f3fc", size=13, family="JetBrains Mono"),
+            textfont=dict(color=TXT_HI, size=_fs_ac, family=F_NUM),
             hovertemplate="<b>%{x}</b><br>Acumulado: R$ %{y:,.0f}<extra></extra>",
         ))
+        fig_acum.update_layout(**base_layout(420, dict(t=44, b=46, l=10, r=14)))
         fig_acum.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#b9c8dc", family="Inter", size=14),
-            height=420, margin=dict(t=42, b=44, l=10, r=10),
-            hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
-                            font=dict(color="#e8f4ff", family="Inter", size=14)),
-            separators=",.",
-            xaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), showgrid=False,
-                       linecolor="rgba(120,170,225,0.12)"),
-            yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False),
-            showlegend=False,
+            xaxis=dict(tickfont=dict(size=_fs_ac, color=TXT_MID, family=F_NUM),
+                       showgrid=False, linecolor=AXIS, zeroline=False,
+                       ticks="outside", ticklen=4, tickcolor=AXIS, automargin=True),
+            yaxis=eixo_y_oculto(_max_ac * 1.22),
         )
         st.plotly_chart(fig_acum, use_container_width=True, key="pc_5")
         st.markdown(
             f'<p style="font-size:0.95rem;color:#9fb2c9;text-align:center;margin-top:-8px;">'
-            f'Hoje <b class="num" style="color:#fbbf24;font-size:1.15rem;">{fmt_brl0(valor_hoje)}</b>'
-            f' &nbsp;·&nbsp; Mês <b class="num" style="color:#34d399;font-size:1.15rem;">{fmt_brl0(total_mes)}</b></p>',
+            f'Hoje <b class="num" style="color:#facc15;font-size:1.3rem;">{fmt_brl0(valor_hoje)}</b>'
+            f' &nbsp;·&nbsp; Mês <b class="num" style="color:#38bdf8;font-size:1.3rem;">{fmt_brl0(total_mes)}</b></p>',
             unsafe_allow_html=True)
     else:
         st.info("Nenhum lançamento no mês corrente ainda.")
@@ -1437,44 +1541,40 @@ if pagina == "Dashboard":
         fig_ev = go.Figure()
         _max_val_ev = float(df_ev["Valor"].max()) if len(df_ev) else 1
         _max_qtd_ev = float(df_ev["Qtd"].max()) if len(df_ev) else 1
+        _n_ev = len(df_ev)
+        _fs_ev = 14 if _n_ev <= 14 else 12 if _n_ev <= 24 else 11
         fig_ev.add_trace(go.Bar(
             x=df_ev["_DIA"], y=df_ev["Valor"], name="Valor (R$)",
-            marker=dict(color="rgba(34,211,238,0.5)",
-                        line=dict(color="rgba(165,243,252,0.25)", width=1)),
+            marker=dict(color=C_INFO, opacity=0.92,
+                        line=dict(color="rgba(255,255,255,0.10)", width=1)),
+            width=0.55,
             text=[fmt_brl0(v) for v in df_ev["Valor"]],
             textposition="outside", cliponaxis=False,
-            textfont=dict(color="#cfe0f2", size=13, family="JetBrains Mono"),
+            textfont=dict(color=TXT_HI, size=_fs_ev, family=F_NUM),
             hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.0f}<extra></extra>"))
         fig_ev.add_trace(go.Scatter(
             x=df_ev["_DIA"], y=df_ev["Qtd"], name="Notas", yaxis="y2",
-            mode="lines+markers", line=dict(color="#fbbf24", width=2.6, shape="spline"),
-            marker=dict(color="#fde68a", size=8, line=dict(color="#fbbf24", width=2)),
+            mode="lines+markers", line=dict(color=C_QTY, width=2.2, shape="spline"),
+            marker=dict(color=P_QTY, size=8, line=dict(color=C_QTY, width=2)),
             hovertemplate="<b>%{x}</b><br>Notas: %{y}<extra></extra>"))
+        fig_ev.update_layout(**base_layout(420, dict(t=48, b=46, l=10, r=14), legenda=True))
         fig_ev.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#b9c8dc", family="Inter", size=14),
-            height=420, margin=dict(t=42, b=44, l=10, r=10),
-            hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
-                            font=dict(color="#e8f4ff", family="Inter", size=14)),
-            bargap=0.52, separators=",.",
-            xaxis=dict(tickfont=dict(size=14, color="#9fb2c9"), showgrid=False,
-                       linecolor="rgba(120,170,225,0.12)"),
-            yaxis=dict(showticklabels=False, gridcolor=GRID, zeroline=False,
-                       range=[0, _max_val_ev * 1.30]),
+            bargap=0.46,
+            xaxis=dict(tickfont=dict(size=_fs_ev, color=TXT_MID, family=F_NUM),
+                       showgrid=False, linecolor=AXIS, zeroline=False,
+                       ticks="outside", ticklen=4, tickcolor=AXIS, automargin=True),
+            yaxis=eixo_y_oculto(_max_val_ev * 1.30),
             yaxis2=dict(overlaying="y", side="right", showgrid=False,
                         showticklabels=False, zeroline=False,
-                        range=[0, _max_qtd_ev * 1.55]),
-            legend=dict(orientation="h", x=0, xanchor="left", y=1.12,
-                        bgcolor="rgba(0,0,0,0)", font=dict(size=14, color="#9fb2c9"),
-                        itemsizing="constant", itemwidth=40),
+                        range=[0, _max_qtd_ev * 1.60]),
         )
-        _plot_h_ev = 420 - 42 - 44
-        _ref_ev = [float(v) / (_max_val_ev * 1.30) * _plot_h_ev + 18 if _max_val_ev > 0 else 18
+        _plot_h_ev = 420 - 48 - 46
+        _ref_ev = [float(v) / (_max_val_ev * 1.30) * _plot_h_ev + 20 if _max_val_ev > 0 else 20
                    for v in df_ev["Valor"]]
         anotar_linha(fig_ev, list(df_ev["_DIA"]), list(df_ev["Qtd"]),
                      ref_pxs=_ref_ev, plot_h=_plot_h_ev,
-                     frac_scale=(1 / (_max_qtd_ev * 1.55)) if _max_qtd_ev > 0 else 0,
-                     cor="#fcd34d", size=14, gap=26)
+                     frac_scale=(1 / (_max_qtd_ev * 1.60)) if _max_qtd_ev > 0 else 0,
+                     cor=C_QTY, size=_fs_ev, gap=28)
         st.plotly_chart(fig_ev, use_container_width=True, key="pc_6")
     else:
         st.info("Nenhum lançamento no mês corrente ainda.")
@@ -1565,12 +1665,12 @@ if pagina == "Dashboard":
                   <div class="cc-head-r">
                     <div class="cc-mini">
                       <span class="cc-mini-lab">Total {_lbl_ref}</span>
-                      <span class="cc-mini-val" style="color:#34d399;">{fmt_brl0(total_atual)}</span>
+                      <span class="cc-mini-val" style="color:#38bdf8;">{fmt_brl0(total_atual)}</span>
                       <span class="cc-mini-sub">valor devolvido</span>
                     </div>
                     <div class="cc-mini">
                       <span class="cc-mini-lab">Total {_lbl_ant}</span>
-                      <span class="cc-mini-val" style="color:#60a5fa;">{fmt_brl0(total_semana)}</span>
+                      <span class="cc-mini-val" style="color:#cbd5e1;">{fmt_brl0(total_semana)}</span>
                       <span class="cc-mini-sub">valor devolvido</span>
                     </div>
                     <div class="cc-ctrls">
@@ -1589,102 +1689,95 @@ if pagina == "Dashboard":
                 htmpl = (f"<b>Placa %{{x}}</b><br>"
                          f"🧑‍✈️ %{{customdata[4]}}<br>"
                          f"📦 %{{customdata[5]}}<br>"
-                         f"<span style='color:#34d399'>●</span> {_lbl_ref} — %{{customdata[0]}}<br>"
-                         f"<span style='color:#60a5fa'>●</span> {_lbl_ant} — %{{customdata[1]}}<br>"
+                         f"<span style='color:#38bdf8'>●</span> {_lbl_ref} — %{{customdata[0]}}<br>"
+                         f"<span style='color:#cbd5e1'>●</span> {_lbl_ant} — %{{customdata[1]}}<br>"
                          f"<span style='color:#fbbf24'>●</span> Notas {_lbl_ref} — %{{customdata[2]}}<br>"
-                         f"<span style='color:#f87171'>●</span> Notas {_lbl_ant} — %{{customdata[3]}}"
+                         f"<span style='color:#8fa3bb'>●</span> Notas {_lbl_ant} — %{{customdata[3]}}"
                          f"<extra></extra>")
 
                 n_comp = len(df_comp)
                 max_qtd_comp = max(df_comp["Qtd_Atual"].max(), df_comp["Qtd_Semana"].max(), 1)
                 max_val_comp = max(df_comp["Valor_Atual"].max(), df_comp["Valor_Semana"].max(), 1)
 
+                _fs_v_comp = 14 if n_comp <= 14 else 12 if n_comp <= 22 else 11
+                _fs_c_comp = 13 if n_comp <= 14 else 11 if n_comp <= 26 else 10
+
                 fig_comp = go.Figure()
+                # Série histórica em cinza neutro, série de referência em azul:
+                # a cor diz o papel do dado, não o gráfico.
                 fig_comp.add_trace(go.Bar(
                     x=df_comp[COL_PLACA], y=df_comp["Valor_Semana"],
                     name=f"{_lbl_ant} — semana passada",
-                    marker=dict(color="rgba(96,165,250,0.42)",
-                                line=dict(color="rgba(96,165,250,0.55)", width=1)),
+                    marker=dict(color="rgba(143,163,187,0.38)", opacity=1,
+                                line=dict(color="rgba(203,213,225,0.35)", width=1)),
+                    width=0.30,
                     text=[fmt_brl0(v) for v in df_comp["Valor_Semana"]], textposition="outside",
-                    textfont=dict(size=13, color="#9dc2f7", family="JetBrains Mono"),
+                    cliponaxis=False,
+                    textfont=dict(size=_fs_v_comp, color=P_NEUT, family=F_NUM),
                     customdata=cdata, hovertemplate=htmpl))
                 fig_comp.add_trace(go.Bar(
                     x=df_comp[COL_PLACA], y=df_comp["Valor_Atual"],
                     name=f"{_lbl_ref} — referência",
-                    marker=dict(color="rgba(52,211,153,0.72)",
-                                line=dict(color="rgba(52,211,153,0.85)", width=1)),
+                    marker=dict(color=C_INFO, opacity=0.95,
+                                line=dict(color="rgba(255,255,255,0.12)", width=1)),
+                    width=0.30,
                     text=[fmt_brl0(v) for v in df_comp["Valor_Atual"]], textposition="outside",
-                    textfont=dict(size=14.5, color="#f1f6fc", family="JetBrains Mono"),
+                    cliponaxis=False,
+                    textfont=dict(size=_fs_v_comp + 1, color=TXT_HI, family=F_NUM),
                     customdata=cdata, hovertemplate=htmpl))
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Semana"],
-                    name="Semana passada", mode="lines+markers",
-                    line=dict(color="#f87171", width=2, dash="dot", shape="spline"),
-                    marker=dict(color="#fca5a5", size=8, line=dict(color="rgba(4,7,15,0.9)", width=1.5)),
+                    name="Notas — semana passada", mode="lines+markers",
+                    line=dict(color=C_NEUT, width=1.8, dash="dot", shape="spline"),
+                    marker=dict(color=P_NEUT, size=7, line=dict(color="rgba(4,8,15,0.9)", width=1.5)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
                 fig_comp.add_trace(go.Scatter(
                     x=df_comp[COL_PLACA], y=df_comp["Qtd_Atual"],
-                    name="Essa semana", mode="lines+markers",
-                    line=dict(color="#fbbf24", width=2.6, shape="spline"),
-                    marker=dict(color="#fde68a", size=9, line=dict(color="rgba(4,7,15,0.9)", width=1.5)),
+                    name="Notas — referência", mode="lines+markers",
+                    line=dict(color=C_QTY, width=2.4, shape="spline"),
+                    marker=dict(color=P_QTY, size=9, line=dict(color="rgba(4,8,15,0.9)", width=1.5)),
                     customdata=cdata, hovertemplate=htmpl, yaxis="y2"))
 
+                _h_comp = max(470, min(n_comp * 58, 720))
+                fig_comp.update_layout(**base_layout(_h_comp, dict(t=60, b=90, l=8, r=10),
+                                                     legenda=True))
                 fig_comp.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    font=dict(color="#b9c8dc", family="Inter"),
-                    height=max(460, min(n_comp * 52, 700)),
-                    margin=dict(t=58, b=86, l=8, r=8),
-                    separators=",.",
-                    hovermode="closest",
-                    hoverlabel=dict(bgcolor="rgba(8,14,28,0.97)", bordercolor="rgba(56,189,248,0.35)",
-                                    font=dict(color="#e8f4ff", family="Inter", size=12.5),
-                                    align="left"),
-                    barmode="group", bargap=0.52, bargroupgap=0.10,
-                    xaxis=dict(tickfont=dict(color="#a9bcd4", size=11, family="JetBrains Mono"),
-                               showgrid=False, linecolor="rgba(120,170,225,0.12)",
-                               zeroline=False, tickangle=-38, automargin=True),
-                    yaxis=dict(showticklabels=False,
-                               gridcolor="rgba(120,170,225,0.055)", zeroline=False,
-                               range=[0, max_val_comp * 1.55], nticks=5),
+                    barmode="group", bargap=0.44, bargroupgap=0.14,
+                    xaxis=eixo_x(df_comp[COL_PLACA], size=_fs_c_comp),
+                    yaxis=eixo_y_oculto(max_val_comp * 1.52),
                     yaxis2=dict(overlaying="y", side="right", showgrid=False, zeroline=False,
-                                showticklabels=False,
-                                range=[0, max_qtd_comp * 3.6], nticks=4),
-                    legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="rgba(0,0,0,0)",
-                                font=dict(color="#b9c8dc", size=13.5),
-                                orientation="h", x=0, xanchor="left", y=1.11,
-                                itemsizing="constant", itemwidth=40),
+                                showticklabels=False, range=[0, max_qtd_comp * 3.6]),
                 )
                 # ── Rótulos das duas linhas, posicionados sem colisão ───────
-                _h_comp = max(460, min(n_comp * 52, 700))
-                _plot_h = _h_comp - 58 - 86
+                _plot_h = _h_comp - 60 - 90
                 _ref_barras = [
-                    [float(va) / (max_val_comp * 1.55) * _plot_h + 18,
-                     float(vs) / (max_val_comp * 1.55) * _plot_h + 18]
+                    [float(va) / (max_val_comp * 1.52) * _plot_h + 20,
+                     float(vs) / (max_val_comp * 1.52) * _plot_h + 20]
                     for va, vs in zip(df_comp["Valor_Atual"], df_comp["Valor_Semana"])]
                 _fs = (1 / (max_qtd_comp * 3.6)) if max_qtd_comp > 0 else 0
                 _ocup = anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Atual"]),
                                      ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
-                                     cor="#fcd34d", size=14, gap=26)
+                                     cor=C_QTY, size=_fs_v_comp, gap=28)
                 anotar_linha(fig_comp, list(df_comp[COL_PLACA]), list(df_comp["Qtd_Semana"]),
                              ref_pxs=_ref_barras, plot_h=_plot_h, frac_scale=_fs,
-                             cor="#fca5a5", size=14, ocupados=_ocup, gap=26)
+                             cor=C_NEUT, size=_fs_v_comp, ocupados=_ocup, gap=28)
 
                 st.plotly_chart(fig_comp, use_container_width=True,
                                 config={"displayModeBar": False}, key="pc_9")
 
                 # ── Rodapé do card ──────────────────────────────────────────
-                _var_cor = "#f87171" if var_pct > 0 else "#34d399" if var_pct < 0 else "#8fa3bd"
+                _var_cor = C_CRIT if var_pct > 0 else C_OK if var_pct < 0 else C_NEUT
                 _var_seta = "▲" if var_pct > 0 else "▼" if var_pct < 0 else "■"
                 st.markdown(f"""
                 <div class="cc-foot">
                   <div class="cc-foot-i">
-                    <span class="cc-foot-lab"><i class="d" style="background:#34d399;"></i>{_lbl_ref} — referência</span>
-                    <span class="cc-foot-val" style="color:#34d399;">{fmt_brl0(total_atual)}</span>
+                    <span class="cc-foot-lab"><i class="d" style="background:#38bdf8;"></i>{_lbl_ref} — referência</span>
+                    <span class="cc-foot-val" style="color:#38bdf8;">{fmt_brl0(total_atual)}</span>
                   </div>
                   <div class="cc-foot-sep"></div>
                   <div class="cc-foot-i">
-                    <span class="cc-foot-lab"><i class="d" style="background:#60a5fa;"></i>{_lbl_ant} — semana passada</span>
-                    <span class="cc-foot-val" style="color:#93c5fd;">{fmt_brl0(total_semana)}</span>
+                    <span class="cc-foot-lab"><i class="d" style="background:#8fa3bb;"></i>{_lbl_ant} — semana passada</span>
+                    <span class="cc-foot-val" style="color:#cbd5e1;">{fmt_brl0(total_semana)}</span>
                   </div>
                   <div class="cc-foot-sep"></div>
                   <div class="cc-foot-i">
@@ -1772,11 +1865,9 @@ if pagina == "Dashboard":
                      .groupby(COL_DESTINO).agg(Valor=(VALOR_COL, "sum"))
                      .reset_index().sort_values("Valor", ascending=False).head(10))
             if not df_dd.empty:
-                fig_dd = px.pie(df_dd, names=COL_DESTINO, values="Valor",
-                                color_discrete_sequence=MIXED, hole=0.62)
-                fig_dd.update_traces(textfont=dict(size=12, color="#e8f1fb"),
-                                     marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
-                st.plotly_chart(plotly_dark(fig_dd, height=360), use_container_width=True, key="pc_14")
+                fig_dd = make_donut(df_dd, COL_DESTINO, "Valor", height=380,
+                                    money=True, centro_rot="Devolvido")
+                st.plotly_chart(fig_dd, use_container_width=True, key="pc_14")
         panel_close()
     with c5:
         panel_open("Ranking de motivos", tag="Consolidado", icon="📊")
@@ -1837,8 +1928,8 @@ elif pagina == "Equipe":
     else:
         fig_ep = make_combo_chart(df_ent_pg, COL_ENT_NOME, "Valor", "Qtd", "", "",
                                   ramp(len(df_ent_pg), 5, 10, "#a78bfa"),
-                                  linha_cor="#38bdf8", linha_ponto="#bae6fd",
-                                  linha_texto="#7dd3fc",
+                                  linha_cor=C_QTY, linha_ponto=P_QTY,
+                                  linha_texto=C_QTY,
                                   customdata=df_ent_pg[["Placas"]].values,
                                   extra_hover="<br>🚚 %{customdata[0]}")
         fig_ep.update_xaxes(tickangle=-35, automargin=True)
@@ -2087,11 +2178,9 @@ elif pagina == "Reentregas":
                               .groupby(praca_r_col).agg(Qtd=(praca_r_col, "count"))
                               .reset_index().sort_values("Qtd", ascending=False).head(10))
                 if not df_praca_r.empty:
-                    fig_pr = px.pie(df_praca_r, names=praca_r_col, values="Qtd",
-                                    color_discrete_sequence=MIXED, hole=0.62)
-                    fig_pr.update_traces(textfont=dict(size=12, color="#e8f1fb"),
-                                         marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
-                    st.plotly_chart(plotly_dark(fig_pr, height=360), use_container_width=True, key="pc_23")
+                    fig_pr = make_donut(df_praca_r, praca_r_col, "Qtd", height=380,
+                                        money=False, centro_rot="Reentregas")
+                    st.plotly_chart(fig_pr, use_container_width=True, key="pc_23")
             panel_close()
         with cr5:
             panel_open("Ranking de motivos de transferência", tag="Consolidado", icon="📊")
@@ -2452,11 +2541,9 @@ elif pagina == "Motivos":
             panel_open("Participação por motivo", tag="Top 10", icon="🥧")
             df_pie = df_mot_all.head(10)
             if not df_pie.empty:
-                fig_pm = px.pie(df_pie, names=COL_MOTIVO, values="Valor",
-                                color_discrete_sequence=MIXED, hole=0.62)
-                fig_pm.update_traces(textfont=dict(size=12, color="#e8f1fb"),
-                                     marker=dict(line=dict(color="rgba(4,7,15,0.9)", width=2)))
-                st.plotly_chart(plotly_dark(fig_pm, height=420), use_container_width=True, key="pc_29")
+                fig_pm = make_donut(df_pie, COL_MOTIVO, "Valor", height=430,
+                                    money=True, centro_rot="Devolvido")
+                st.plotly_chart(fig_pm, use_container_width=True, key="pc_29")
             panel_close()
         with m2:
             panel_open("Ranking completo", tag=f"{len(df_mot_all)} motivos", icon="📊")
@@ -2664,7 +2751,7 @@ elif pagina == "Configurações":
             st.caption(reent_load_error)
     panel_close()
 
-    panel_open("Sobre esta versão", tag="Interface v2.2", icon="ℹ️")
+    panel_open("Sobre esta versão", tag="Interface v3.0", icon="ℹ️")
     st.markdown(
         '<p style="font-size:0.82rem;color:#7c8ea8;line-height:1.8;">'
         'Redesign visual: menu lateral fixo, cabeçalho com status de sincronização, painel de filtros compacto, '
@@ -2673,6 +2760,6 @@ elif pagina == "Configurações":
         'v2.2: leitura da aba <b>NOMES</b> (PLACA · MOTORISTA · ENTREGADOR), cruzamento com a placa das '
         'devoluções, gráficos por motorista e por entregador, filtro global de motorista, nova página '
         '<b>Equipe</b> e nomes no tooltip dos gráficos por placa.<br>'
-        'Nenhuma regra de cálculo, consulta, filtro ou fonte de dados anterior foi alterada.</p>',
+        'v3.0: reformulação visual completa dos gráficos — tokens de design únicos, linguagem de cor por significado (vermelho crítico, laranja intermediário, amarelo quantidade, azul informativo, verde positivo, cinza neutro), números maiores em etiquetas escuras que nunca se sobrepõem, eixos laterais removidos, roscas no lugar das pizzas e dimensionamento responsivo por quantidade de categorias.<br>''Nenhuma regra de cálculo, consulta, filtro ou fonte de dados anterior foi alterada.</p>',
         unsafe_allow_html=True)
     panel_close()
